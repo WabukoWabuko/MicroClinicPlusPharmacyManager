@@ -1,0 +1,22 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# SQLite database
+data/clinic.db
+
+# IDE files
+.vscode/
+.idea/
+
+# macOS files
+.DS_Store
+
+# Logs and temporary files
+*.log
+*.tmp
