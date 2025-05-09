@@ -74,7 +74,7 @@ class PatientManagementWidget(QWidget):
             self.patient_table.setItem(row, 0, QTableWidgetItem(str(patient['patient_id'])))
             self.patient_table.setItem(row, 1, QTableWidgetItem(patient['first_name']))
             self.patient_table.setItem(row, 2, QTableWidgetItem(patient['last_name']))
-            self.patient_table.setItem(row, 3, QTableWidgetItem(str(patient['age'])))
+            self.patient_table.setItem(row, 3, QTableWidgetItem(str(patient['age_val'])))
             self.patient_table.setItem(row, 4, QTableWidgetItem(patient['gender']))
             self.patient_table.setItem(row, 5, QTableWidgetItem(patient['contact']))
 
