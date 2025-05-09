@@ -27,7 +27,9 @@ class PrescriptionLoggingWidget(QWidget):
         # Form layout for prescription details
         form_layout = QFormLayout()
         form_layout.addRow("Patient:", search_layout)
-        self.drug_name_input = QLineEdit()
+        self.drug_combo = QComboBox()
+        self.quantity_input = QLineEdit()
+        self.quantity_input.setPlaceholderText("Quantity")
         self.dosage_input = QLineEdit()
         self.frequency_input = QLineEdit()
         self.duration_input = QLineEdit()
@@ -35,7 +37,8 @@ class PrescriptionLoggingWidget(QWidget):
         self.notes_input.setMaximumHeight(50)
         self.diagnosis_input = QLineEdit()
 
-        form_layout.addRow("Drug Name:", self.drug_name_input)
+        form_layout.addRow("Drug:", self.drug_combo)
+        form_layout.addRow("Quantity:", self.quantity_input)
         form_layout.addRow("Dosage:", self.dosage_input)
         form_layout.addRow("Frequency:", self.frequency_input)
         form_layout.addRow("Duration:", self.duration_input)
@@ -59,9 +62,9 @@ class PrescriptionLoggingWidget(QWidget):
 
         # Table for viewing prescription history
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
+        self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            "Prescription ID", "Date", "Diagnosis", "Notes", "Dosage Instructions"
+            "Prescription ID", "Date", "Drug", "Quantity", "Diagnosis", "Notes"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
@@ -70,8 +73,9 @@ class PrescriptionLoggingWidget(QWidget):
         main_layout.addLayout(button_layout)
         main_layout.addWidget(self.table)
 
-        # Populate patient dropdown
+        # Populate dropdowns
         self.populate_patients()
+        self.populate_drugs()
 
     def populate_patients(self, patients=None):
         """Populate patient dropdown with patients, optionally filtered."""
@@ -93,10 +97,22 @@ class PrescriptionLoggingWidget(QWidget):
             patients = self.db.get_all_patients()
         self.populate_patients(patients)
 
+    def populate_drugs(self):
+        """Populate drug dropdown with available inventory."""
+        self.drug_combo.clear()
+        drugs = self.db.get_all_drugs()
+        for drug in drugs:
+            if drug['quantity'] > 0:  # Only show drugs with stock
+                self.drug_combo.addItem(
+                    f"{drug['name']} (Stock: {drug['quantity']})",
+                    drug['drug_id']
+                )
+
     def save_prescription(self):
         """Save prescription to the database."""
         patient_id = self.patient_combo.currentData()
-        drug_name = self.drug_name_input.text().strip()
+        drug_id = self.drug_combo.currentData()
+        quantity_text = self.quantity_input.text().strip()
         dosage = self.dosage_input.text().strip()
         frequency = self.frequency_input.text().strip()
         duration = self.duration_input.text().strip()
@@ -104,35 +120,50 @@ class PrescriptionLoggingWidget(QWidget):
         notes = self.notes_input.toPlainText().strip()
 
         # Validate inputs
-        if not (patient_id and drug_name and dosage and frequency and duration):
-            QMessageBox.warning(self, "Input Error", "Patient, Drug Name, Dosage, Frequency, and Duration are required.")
+        if not (patient_id and drug_id and quantity_text and dosage and frequency and duration):
+            QMessageBox.warning(self, "Input Error", "All fields are required.")
             return
 
-        # Save to database (user_id=1 as placeholder)
-        self.db.add_prescription(
-            patient_id=patient_id,
-            user_id=1,  # Placeholder until login system is implemented
-            diagnosis=diagnosis,
-            notes=notes,
-            drug_name=drug_name,
-            dosage=dosage,
-            frequency=frequency,
-            duration=duration
-        )
-        QMessageBox.information(self, "Success", "Prescription saved successfully.")
-        self.clear_form()
+        try:
+            quantity = int(quantity_text)
+            if quantity <= 0:
+                raise ValueError
+        except ValueError:
+            QMessageBox.warning(self, "Input Error", "Quantity must be a positive integer.")
+            return
+
+        try:
+            # Save to database (user_id=1 as placeholder)
+            self.db.add_prescription(
+                patient_id=patient_id,
+                user_id=1,  # Placeholder until login system is implemented
+                diagnosis=diagnosis,
+                notes=notes,
+                drug_id=drug_id,
+                dosage=dosage,
+                frequency=frequency,
+                duration=duration,
+                quantity_prescribed=quantity
+            )
+            QMessageBox.information(self, "Success", "Prescription saved successfully.")
+            self.clear_form()
+        except ValueError as e:
+            QMessageBox.warning(self, "Stock Error", str(e))
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to save prescription: {str(e)}")
 
     def clear_form(self):
         """Clear all input fields."""
         self.search_input.clear()  # Clear search
-        self.populate_patients()  # Reset dropdown
-        self.drug_name_input.clear()
+        self.populate_patients()  # Reset patient dropdown
+        self.quantity_input.clear()
         self.dosage_input.clear()
         self.frequency_input.clear()
         self.duration_input.clear()
         self.diagnosis_input.clear()
         self.notes_input.clear()
         self.table.setRowCount(0)  # Clear table
+        self.populate_drugs()  # Reset drug dropdown
 
     def view_prescriptions(self):
         """Display prescription history for the selected patient."""
@@ -147,6 +178,7 @@ class PrescriptionLoggingWidget(QWidget):
         for row, prescription in enumerate(prescriptions):
             self.table.setItem(row, 0, QTableWidgetItem(str(prescription['prescription_id'])))
             self.table.setItem(row, 1, QTableWidgetItem(prescription['prescription_date']))
-            self.table.setItem(row, 2, QTableWidgetItem(prescription['diagnosis'] or ""))
-            self.table.setItem(row, 3, QTableWidgetItem(prescription['notes'] or ""))
-            self.table.setItem(row, 4, QTableWidgetItem(prescription['dosage_instructions']))
+            self.table.setItem(row, 2, QTableWidgetItem(prescription['drug_name']))
+            self.table.setItem(row, 3, QTableWidgetItem(str(prescription['quantity_prescribed'])))
+            self.table.setItem(row, 4, QTableWidgetItem(prescription['diagnosis'] or ""))
+            self.table.setItem(row, 5, QTableWidgetItem(prescription['notes'] or ""))

@@ -49,23 +49,42 @@ class Database:
             """, (f"%{search_term}%", f"%{search_term}%"))
             return cursor.fetchall()
 
-    def add_prescription(self, patient_id, user_id, diagnosis, notes, drug_name, dosage, frequency, duration):
-        """Add a prescription and its item to the prescriptions and prescription_items tables."""
+    def add_prescription(self, patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed):
+        """Add a prescription and its item to the prescriptions and prescription_items tables, updating inventory."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            # Insert into prescriptions table
-            cursor.execute("""
-                INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes)
-                VALUES (?, ?, ?, ?)
-            """, (patient_id, user_id, diagnosis, notes))
-            prescription_id = cursor.lastrowid
-            # Insert into prescription_items table
-            cursor.execute("""
-                INSERT INTO prescription_items (prescription_id, drug_id, dosage_instructions, quantity_prescribed)
-                VALUES (?, ?, ?, ?)
-            """, (prescription_id, 1, f"{dosage}, {frequency}, for {duration}", 1))  # drug_id=1 as placeholder
-            conn.commit()
-            return prescription_id
+            try:
+                # Verify sufficient stock
+                cursor.execute("SELECT quantity FROM inventory WHERE drug_id = ?", (drug_id,))
+                current_quantity = cursor.fetchone()
+                if not current_quantity or current_quantity[0] < quantity_prescribed:
+                    raise ValueError(f"Insufficient stock for drug ID {drug_id}")
+
+                # Insert into prescriptions table
+                cursor.execute("""
+                    INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes)
+                    VALUES (?, ?, ?, ?)
+                """, (patient_id, user_id, diagnosis, notes))
+                prescription_id = cursor.lastrowid
+
+                # Insert into prescription_items table
+                cursor.execute("""
+                    INSERT INTO prescription_items (prescription_id, drug_id, dosage_instructions, quantity_prescribed)
+                    VALUES (?, ?, ?, ?)
+                """, (prescription_id, drug_id, f"{dosage}, {frequency}, for {duration}", quantity_prescribed))
+
+                # Update inventory quantity
+                cursor.execute("""
+                    UPDATE inventory
+                    SET quantity = quantity - ?
+                    WHERE drug_id = ?
+                """, (quantity_prescribed, drug_id))
+
+                conn.commit()
+                return prescription_id
+            except Exception as e:
+                conn.rollback()
+                raise e
 
     def get_patient_prescriptions(self, patient_id):
         """Retrieve all prescriptions for a patient, including prescription items."""
@@ -74,9 +93,10 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT p.prescription_id, p.prescription_date, p.diagnosis, p.notes,
-                       pi.dosage_instructions
+                       pi.dosage_instructions, pi.quantity_prescribed, i.name as drug_name
                 FROM prescriptions p
                 JOIN prescription_items pi ON p.prescription_id = pi.prescription_id
+                JOIN inventory i ON pi.drug_id = i.drug_id
                 WHERE p.patient_id = ?
             """, (patient_id,))
             return cursor.fetchall()
