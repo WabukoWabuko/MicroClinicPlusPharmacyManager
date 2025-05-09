@@ -298,18 +298,18 @@ class ReportingDashboardWidget(QWidget):
 
     def export_low_stock_csv(self):
         """Export low stock table to CSV."""
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Low Stock CSV", "", "CSV Files (*.csv Mehr
-           if file_path:
-               data = []
-               headers = ["Drug ID", "Name", "Quantity", "Batch Number", "Expiry Date"]
-               for row in range(self.low_stock_table.rowCount()):
-                   row_data = []
-                   for col in range(self.low_stock_table.columnCount()):
-                       item = self.low_stock_table.item(row, col)
-                       row_data.append(item.text() if item else "")
-                   data.append(row_data)
-               df = pd.DataFrame(data, columns=headers)
-               df.to_csv(file_path, index=False)
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Low Stock CSV", "", "CSV Files (*.csv)")
+        if file_path:
+            data = []
+            headers = ["Drug ID", "Name", "Quantity", "Batch Number", "Expiry Date"]
+            for row in range(self.low_stock_table.rowCount()):
+                row_data = []
+                for col in range(self.low_stock_table.columnCount()):
+                    item = self.low_stock_table.item(row, col)
+                    row_data.append(item.text() if item else "")
+                data.append(row_data)
+            df = pd.DataFrame(data, columns=headers)
+            df.to_csv(file_path, index=False)
 
     def export_low_stock_pdf(self):
         """Export low stock table to PDF."""

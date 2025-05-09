@@ -47,19 +47,19 @@ class MainWindow(QMainWindow):
 
     def setup_menu(self):
         """Set up the menu based on the user's role."""
-        # Clear existing menu layout
-        old_layout = self.menu_widget.layout()
-        if old_layout:
-            while old_layout.count():
-                item = old_layout.takeAt(0)
+        # Reuse or create menu layout
+        menu_layout = self.menu_widget.layout()
+        if menu_layout:
+            # Clear existing widgets
+            while menu_layout.count():
+                item = menu_layout.takeAt(0)
                 widget = item.widget()
                 if widget:
                     widget.deleteLater()
-            self.menu_widget.setLayout(None)
-
-        # Create new layout
-        menu_layout = QVBoxLayout()
-        self.menu_widget.setLayout(menu_layout)
+        else:
+            # Create new layout if none exists
+            menu_layout = QVBoxLayout()
+            self.menu_widget.setLayout(menu_layout)
 
         # Common buttons for all roles
         patient_button = QPushButton("Patient Management")
