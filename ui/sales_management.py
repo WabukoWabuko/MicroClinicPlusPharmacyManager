@@ -170,7 +170,7 @@ class SalesManagementWidget(QWidget):
             # Save sale to database
             sale_id = self.db.add_sale(
                 patient_id=patient_id,
-                user_id=1,  # Placeholder until login system
+                user_id=self.main_window.current_user['user_id'],
                 total_price=total_price,
                 items=self.sale_items
             )

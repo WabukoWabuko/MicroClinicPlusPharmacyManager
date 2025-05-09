@@ -133,10 +133,10 @@ class PrescriptionLoggingWidget(QWidget):
             return
 
         try:
-            # Save to database (user_id=1 as placeholder)
+            # Save to database using logged-in user's ID
             self.db.add_prescription(
                 patient_id=patient_id,
-                user_id=1,  # Placeholder until login system is implemented
+                user_id=self.main_window.current_user['user_id'],
                 diagnosis=diagnosis,
                 notes=notes,
                 drug_id=drug_id,

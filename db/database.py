@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
+import bcrypt
 
 class Database:
     def __init__(self):
@@ -19,6 +20,63 @@ class Database:
                 with open(schema_path, "r") as f:
                     cursor.executescript(f.read())
                 conn.commit()
+
+    def add_user(self, username, password, role):
+        """Add a user with a hashed password to the users table."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # Hash the password
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            try:
+                cursor.execute("""
+                    INSERT INTO users (username, password_hash, role)
+                    VALUES (?, ?, ?)
+                """, (username, password_hash.decode('utf-8'), role))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                raise ValueError(f"Username {username} already exists")
+
+    def authenticate_user(self, username, password):
+        """Authenticate a user by checking username and password."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+            user = cursor.fetchone()
+            if user and bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                return user
+            return None
+
+    def add_patient(self, first_name, last_name, date_of_birth, gender, phone, address):
+        """Add a patient to the patients table."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO patients (first_name, last_name, date_of_birth, gender, phone, address)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (first_name, last_name, date_of_birth, gender, phone, address))
+            conn.commit()
+
+    def get_all_patients(self):
+        """Retrieve all patients from the patients table."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM patients")
+            return cursor.fetchall()
+
+    def search_patients(self, search_term):
+        """Search patients by first name or last name."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM users WHERE username = ?
+            """, (username,))
+            user = cursor.fetchone()
+            if user and bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                return user
+            return None
 
     def add_patient(self, first_name, last_name, date_of_birth, gender, phone, address):
         """Add a patient to the patients table."""
