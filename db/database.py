@@ -90,6 +90,13 @@ class Database:
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (first_name, last_name, date_of_birth, gender, phone, address))
             conn.commit()
+    def get_patient(self, patient_id):
+        """Retrieve a patient by their ID."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM patients WHERE patient_id = ?", (patient_id,))
+            return cursor.fetchone()
 
     def get_all_patients(self):
         """Retrieve all patients from the patients table."""
