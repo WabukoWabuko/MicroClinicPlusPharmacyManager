@@ -38,7 +38,7 @@ class PrescriptionLoggingWidget(QWidget):
         form_layout.addRow("Drug Name:", self.drug_name_input)
         form_layout.addRow("Dosage:", self.dosage_input)
         form_layout.addRow("Frequency:", self.frequency_input)
-        form_layout.addRow("Duration:", self.dosage_input)
+        form_layout.addRow("Duration:", self.duration_input)
         form_layout.addRow("Diagnosis:", self.diagnosis_input)
         form_layout.addRow("Notes:", self.notes_input)
 
