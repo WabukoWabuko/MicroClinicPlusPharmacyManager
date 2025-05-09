@@ -1,12 +1,10 @@
--- Creating users table
 CREATE TABLE users (
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL
+    role TEXT NOT NULL CHECK(role IN ('admin', 'staff'))
 );
 
--- Creating patients table
 CREATE TABLE patients (
     patient_id INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name TEXT NOT NULL,
@@ -17,7 +15,17 @@ CREATE TABLE patients (
     address TEXT
 );
 
--- Creating inventory table
+CREATE TABLE prescriptions (
+    prescription_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    prescription_date TEXT DEFAULT (date('now')),
+    diagnosis TEXT NOT NULL,
+    notes TEXT,
+    FOREIGN KEY (patient_id) REFERENCES patients(patient_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
 CREATE TABLE inventory (
     drug_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -27,21 +35,8 @@ CREATE TABLE inventory (
     price REAL NOT NULL
 );
 
--- Creating prescriptions table
-CREATE TABLE prescriptions (
-    prescription_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    patient_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    prescription_date TEXT NOT NULL DEFAULT (date('now')),
-    diagnosis TEXT,
-    notes TEXT,
-    FOREIGN KEY (patient_id) REFERENCES patients(patient_id),
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
-);
-
--- Creating prescription_items table
 CREATE TABLE prescription_items (
-    item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prescription_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
     prescription_id INTEGER NOT NULL,
     drug_id INTEGER NOT NULL,
     dosage_instructions TEXT NOT NULL,
@@ -50,18 +45,16 @@ CREATE TABLE prescription_items (
     FOREIGN KEY (drug_id) REFERENCES inventory(drug_id)
 );
 
--- Creating sales table
 CREATE TABLE sales (
     sale_id INTEGER PRIMARY KEY AUTOINCREMENT,
     patient_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
-    sale_date TEXT NOT NULL DEFAULT (date('now')),
+    sale_date TEXT DEFAULT (date('now')),
     total_price REAL NOT NULL,
     FOREIGN KEY (patient_id) REFERENCES patients(patient_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
--- Creating sale_items table
 CREATE TABLE sale_items (
     sale_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
     sale_id INTEGER NOT NULL,
@@ -71,3 +64,7 @@ CREATE TABLE sale_items (
     FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
     FOREIGN KEY (drug_id) REFERENCES inventory(drug_id)
 );
+
+-- Insert a default admin user
+INSERT INTO users (username, password_hash, role)
+VALUES ('admin', '$2b$12$3X8G8k3z3Q9z2g5r7q8w9u8z7y6x5w4v3u2t1r0q9p8o7n6m5k4j3', 'admin');

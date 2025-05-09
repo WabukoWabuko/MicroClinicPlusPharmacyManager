@@ -33,6 +33,43 @@ class Database:
             except sqlite3.IntegrityError:
                 raise ValueError(f"Username {username} already exists")
 
+    def update_user(self, user_id, username, password, role):
+        """Update a user's details in the users table."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            try:
+                if password:
+                    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    cursor.execute("""
+                        UPDATE users
+                        SET username = ?, password_hash = ?, role = ?
+                        WHERE user_id = ?
+                    """, (username, password_hash, role, user_id))
+                else:
+                    cursor.execute("""
+                        UPDATE users
+                        SET username = ?, role = ?
+                        WHERE user_id = ?
+                    """, (username, role, user_id))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                raise ValueError(f"Username {username} already exists")
+
+    def delete_user(self, user_id):
+        """Delete a user from the users table."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+            conn.commit()
+
+    def get_all_users(self):
+        """Retrieve all users from the users table."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, username, role FROM users")
+            return cursor.fetchall()
+
     def authenticate_user(self, username, password):
         """Authenticate a user by checking username and password."""
         with sqlite3.connect(self.db_path) as conn:

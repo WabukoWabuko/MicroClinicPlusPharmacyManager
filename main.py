@@ -6,6 +6,7 @@ from ui.inventory_management import InventoryManagementWidget
 from ui.sales_management import SalesManagementWidget
 from ui.login import LoginWidget
 from ui.reporting_dashboard import ReportingDashboardWidget
+from ui.user_management import UserManagementWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -31,28 +32,7 @@ class MainWindow(QMainWindow):
         self.inventory_management = InventoryManagementWidget(self)
         self.sales_management = SalesManagementWidget(self)
         self.reporting_dashboard = ReportingDashboardWidget(self)
-
-        menu_layout = QVBoxLayout()
-        self.menu_widget.setLayout(menu_layout)
-        patient_button = QPushButton("Patient Management")
-        prescription_button = QPushButton("Prescription Logging")
-        inventory_button = QPushButton("Inventory Management")
-        sales_button = QPushButton("Sales Management")
-        reporting_button = QPushButton("Reporting Dashboard")
-        logout_button = QPushButton("Logout")
-        patient_button.clicked.connect(self.show_patient_management)
-        prescription_button.clicked.connect(self.show_prescription_logging)
-        inventory_button.clicked.connect(self.show_inventory_management)
-        sales_button.clicked.connect(self.show_sales_management)
-        reporting_button.clicked.connect(self.show_reporting_dashboard)
-        logout_button.clicked.connect(self.logout)
-        menu_layout.addWidget(patient_button)
-        menu_layout.addWidget(prescription_button)
-        menu_layout.addWidget(inventory_button)
-        menu_layout.addWidget(sales_button)
-        menu_layout.addWidget(reporting_button)
-        menu_layout.addWidget(logout_button)
-        menu_layout.addStretch()
+        self.user_management = UserManagementWidget(self)
 
         self.stacked_widget.addWidget(self.login)
         self.stacked_widget.addWidget(self.menu_widget)
@@ -61,8 +41,50 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.inventory_management)
         self.stacked_widget.addWidget(self.sales_management)
         self.stacked_widget.addWidget(self.reporting_dashboard)
+        self.stacked_widget.addWidget(self.user_management)
 
         self.stacked_widget.setCurrentWidget(self.login)
+
+    def setup_menu(self):
+        """Set up the menu based on the user's role."""
+        # Clear existing menu layout
+        if self.menu_widget.layout():
+            while self.menu_widget.layout().count():
+                item = self.menu_widget.layout().takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+
+        menu_layout = QVBoxLayout()
+        self.menu_widget.setLayout(menu_layout)
+
+        # Common buttons for all roles
+        patient_button = QPushButton("Patient Management")
+        prescription_button = QPushButton("Prescription Logging")
+        sales_button = QPushButton("Sales Management")
+        patient_button.clicked.connect(self.show_patient_management)
+        prescription_button.clicked.connect(self.show_prescription_logging)
+        sales_button.clicked.connect(self.show_sales_management)
+        menu_layout.addWidget(patient_button)
+        menu_layout.addWidget(prescription_button)
+        menu_layout.addWidget(sales_button)
+
+        # Admin-only buttons
+        if self.current_user['role'] == 'admin':
+            inventory_button = QPushButton("Inventory Management")
+            reporting_button = QPushButton("Reporting Dashboard")
+            user_management_button = QPushButton("User Management")
+            inventory_button.clicked.connect(self.show_inventory_management)
+            reporting_button.clicked.connect(self.show_reporting_dashboard)
+            user_management_button.clicked.connect(self.show_user_management)
+            menu_layout.addWidget(inventory_button)
+            menu_layout.addWidget(reporting_button)
+            menu_layout.addWidget(user_management_button)
+
+        # Logout button
+        logout_button = QPushButton("Logout")
+        logout_button.clicked.connect(self.logout)
+        menu_layout.addWidget(logout_button)
+        menu_layout.addStretch()
 
     def show_patient_management(self):
         self.stacked_widget.setCurrentWidget(self.patient_management)
@@ -71,15 +93,22 @@ class MainWindow(QMainWindow):
         self.stacked_widget.setCurrentWidget(self.prescription_logging)
 
     def show_inventory_management(self):
-        self.stacked_widget.setCurrentWidget(self.inventory_management)
+        if self.current_user['role'] == 'admin':
+            self.stacked_widget.setCurrentWidget(self.inventory_management)
 
     def show_sales_management(self):
         self.stacked_widget.setCurrentWidget(self.sales_management)
 
     def show_reporting_dashboard(self):
-        self.stacked_widget.setCurrentWidget(self.reporting_dashboard)
+        if self.current_user['role'] == 'admin':
+            self.stacked_widget.setCurrentWidget(self.reporting_dashboard)
+
+    def show_user_management(self):
+        if self.current_user['role'] == 'admin':
+            self.stacked_widget.setCurrentWidget(self.user_management)
 
     def show_menu(self):
+        self.setup_menu()
         self.stacked_widget.setCurrentWidget(self.menu_widget)
 
     def logout(self):
