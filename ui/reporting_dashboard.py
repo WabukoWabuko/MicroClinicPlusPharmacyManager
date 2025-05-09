@@ -161,9 +161,9 @@ class ReportingDashboardWidget(QWidget):
             username = prescription['username']
             self.prescriptions_table.setItem(row, 0, QTableWidgetItem(username))
             self.prescriptions_table.setItem(row, 1, QTableWidgetItem(str(prescription['prescription_count'])))
-            last_prescription = additional_data.get(username, {}).get('last_prescription', '')
-            total_quantity = additional_data.get(username, {}).get('total_quantity', 0)
-            self.prescriptions_table.setItem(row, 2, QTableWidgetItem(last_prescription))
+            last_prescription = additional_data[username]['last_prescription'] if username in additional_data else ''
+            total_quantity = additional_data[username]['total_quantity'] if username in additional_data else 0
+            self.prescriptions_table.setItem(row, 2, QTableWidgetItem(str(last_prescription)))
             self.prescriptions_table.setItem(row, 3, QTableWidgetItem(str(total_quantity)))
 
     def load_low_stock(self):
