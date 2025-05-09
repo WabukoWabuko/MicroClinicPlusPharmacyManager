@@ -20,3 +20,6 @@ data/clinic.db
 # Logs and temporary files
 *.log
 *.tmp
+
+assets/*.png
+!assets/logo.png

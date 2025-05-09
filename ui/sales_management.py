@@ -1,10 +1,12 @@
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
-                             QComboBox, QLineEdit, QPushButton, QTableWidget,
-                             QTableWidgetItem, QHeaderView, QMessageBox, QFileDialog)
-from PyQt6.QtCore import QDate
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+                             QLineEdit, QPushButton, QTableWidget, QTableWidgetItem,
+                             QHeaderView, QFileDialog, QMessageBox)
+from PyQt6.QtCore import Qt
 from db.database import Database
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Image, Spacer
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
 import os
 
 class SalesManagementWidget(QWidget):
@@ -16,230 +18,224 @@ class SalesManagementWidget(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        # Main layout
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
         # Patient selection
         patient_layout = QHBoxLayout()
-        self.patient_search = QLineEdit()
-        self.patient_search.setPlaceholderText("Search by patient name...")
-        self.patient_search.textChanged.connect(self.search_patients)
+        patient_label = QLabel("Select Patient:")
         self.patient_combo = QComboBox()
-        patient_layout.addWidget(self.patient_search)
+        self.patient_combo.addItem("Select Patient", None)
+        patient_layout.addWidget(patient_label)
         patient_layout.addWidget(self.patient_combo)
+        main_layout.addLayout(patient_layout)
 
-        # Drug selection
+        # Drug selection and quantity
         drug_layout = QHBoxLayout()
+        drug_label = QLabel("Drug:")
         self.drug_combo = QComboBox()
+        quantity_label = QLabel("Quantity:")
         self.quantity_input = QLineEdit()
-        self.quantity_input.setPlaceholderText("Quantity")
-        add_drug_button = QPushButton("Add Drug")
-        add_drug_button.clicked.connect(self.add_drug_to_sale)
+        price_label = QLabel("Price:")
+        self.price_input = QLineEdit()
+        self.price_input.setReadOnly(True)
+        add_item_button = QPushButton("Add Item")
+        add_item_button.clicked.connect(self.add_sale_item)
+        drug_layout.addWidget(drug_label)
         drug_layout.addWidget(self.drug_combo)
+        drug_layout.addWidget(quantity_label)
         drug_layout.addWidget(self.quantity_input)
-        drug_layout.addWidget(add_drug_button)
+        drug_layout.addWidget(price_label)
+        drug_layout.addWidget(self.price_input)
+        drug_layout.addWidget(add_item_button)
+        main_layout.addLayout(drug_layout)
 
-        # Form layout
-        form_layout = QFormLayout()
-        form_layout.addRow("Patient:", patient_layout)
-        form_layout.addRow("Drug:", drug_layout)
-        self.total_label = QLineEdit()
-        self.total_label.setReadOnly(True)
-        form_layout.addRow("Total Price (KES):", self.total_label)
-
-        # Table for sale items
-        self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels([
-            "Drug ID", "Name", "Quantity", "Unit Price", "Subtotal"
-        ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # Sale items table
+        self.sale_items_table = QTableWidget()
+        self.sale_items_table.setColumnCount(4)
+        self.sale_items_table.setHorizontalHeaderLabels(["Drug Name", "Quantity", "Price", "Subtotal"])
+        self.sale_items_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        main_layout.addWidget(self.sale_items_table)
 
         # Buttons
         button_layout = QHBoxLayout()
-        save_button = QPushButton("Save Sale")
+        submit_sale_button = QPushButton("Submit Sale")
         clear_button = QPushButton("Clear")
         back_button = QPushButton("Back")
-        save_button.clicked.connect(self.save_sale)
-        clear_button.clicked.connect(self.clear_form)
+        submit_sale_button.clicked.connect(self.add_sale)
+        clear_button.clicked.connect(self.clear_sale)
         back_button.clicked.connect(self.main_window.show_menu)
-        button_layout.addWidget(save_button)
+        button_layout.addWidget(submit_sale_button)
         button_layout.addWidget(clear_button)
         button_layout.addWidget(back_button)
-
-        # Add to main layout
-        main_layout.addLayout(form_layout)
-        main_layout.addWidget(self.table)
         main_layout.addLayout(button_layout)
 
-        # Populate dropdowns
-        self.populate_patients()
-        self.populate_drugs()
+        # Load data
+        self.load_patients()
+        self.load_drugs()
 
-    def populate_patients(self, patients=None):
-        """Populate patient dropdown, optionally filtered."""
+    def load_patients(self):
+        """Load patients into the combo box."""
+        patients = self.db.get_all_patients()
         self.patient_combo.clear()
-        if patients is None:
-            patients = self.db.get_all_patients()
+        self.patient_combo.addItem("Select Patient", None)
         for patient in patients:
             self.patient_combo.addItem(
-                f"{patient['first_name']} {patient['last_name']}",
-                patient['patient_id']
+                f"{patient['first_name']} {patient['last_name']}", patient['patient_id']
             )
 
-    def search_patients(self):
-        """Filter patients in dropdown based on search term."""
-        search_term = self.patient_search.text().strip()
-        if search_term:
-            patients = self.db.search_patients(search_term)
-        else:
-            patients = self.db.get_all_patients()
-        self.populate_patients(patients)
-
-    def populate_drugs(self):
-        """Populate drug dropdown with available inventory."""
+    def load_drugs(self):
+        """Load drugs into the combo box."""
+        drugs = self.db.get_all_drugs()
         self.drug_combo.clear()
-        drugs = self.db.get_all_drugs()
+        self.drug_combo.addItem("Select Drug", None)
         for drug in drugs:
-            if drug['quantity'] > 0:  # Only show drugs with stock
-                self.drug_combo.addItem(
-                    f"{drug['name']} (Stock: {drug['quantity']})",
-                    {'drug_id': drug['drug_id'], 'name': drug['name'], 'price': drug['price']}
-                )
+            self.drug_combo.addItem(drug['name'], {'drug_id': drug['drug_id'], 'price': drug['price']})
+        self.drug_combo.currentIndexChanged.connect(self.update_price)
 
-    def add_drug_to_sale(self):
-        """Add selected drug and quantity to the sale table."""
+    def update_price(self):
+        """Update price field based on selected drug."""
         drug_data = self.drug_combo.currentData()
-        quantity_text = self.quantity_input.text().strip()
+        if drug_data:
+            self.price_input.setText(f"{drug_data['price']:.2f}")
+        else:
+            self.price_input.clear()
 
-        if not drug_data or not quantity_text:
-            QMessageBox.warning(self, "Input Error", "Please select a drug and enter a quantity.")
+    def add_sale_item(self):
+        """Add a drug item to the sale."""
+        drug_data = self.drug_combo.currentData()
+        quantity = self.quantity_input.text().strip()
+
+        if not drug_data or not quantity:
+            QMessageBox.warning(self, "Error", "Please select a drug and enter a quantity.")
             return
 
         try:
-            quantity = int(quantity_text)
+            quantity = int(quantity)
             if quantity <= 0:
-                raise ValueError
-        except ValueError:
-            QMessageBox.warning(self, "Input Error", "Quantity must be a positive integer.")
-            return
-
-        # Check stock
-        drug_id = drug_data['drug_id']
-        drugs = self.db.get_all_drugs()
-        drug = next(d for d in drugs if d['drug_id'] == drug_id)
-        if quantity > drug['quantity']:
-            QMessageBox.warning(self, "Stock Error", f"Only {drug['quantity']} units available for {drug['name']}.")
-            return
-
-        # Add to sale items
-        item = {
-            'drug_id': drug_id,
-            'name': drug_data['name'],
-            'quantity': quantity,
-            'price': drug_data['price'],
-            'subtotal': quantity * drug_data['price']
-        }
-        self.sale_items.append(item)
-        self.update_sale_table()
-        self.quantity_input.clear()
-
-    def update_sale_table(self):
-        """Update the sale items table and total price."""
-        self.table.setRowCount(len(self.sale_items))
-        total_price = 0
-        for row, item in enumerate(self.sale_items):
-            self.table.setItem(row, 0, QTableWidgetItem(str(item['drug_id'])))
-            self.table.setItem(row, 1, QTableWidgetItem(item['name']))
-            self.table.setItem(row, 2, QTableWidgetItem(str(item['quantity'])))
-            self.table.setItem(row, 3, QTableWidgetItem(f"{item['price']:.2f}"))
-            self.table.setItem(row, 4, QTableWidgetItem(f"{item['subtotal']:.2f}"))
-            total_price += item['subtotal']
-        self.total_label.setText(f"{total_price:.2f}")
-
-    def save_sale(self):
-        """Save the sale, update inventory, and generate PDF receipt."""
-        patient_id = self.patient_combo.currentData()
-        if not patient_id or not self.sale_items:
-            QMessageBox.warning(self, "Input Error", "Please select a patient and add at least one drug.")
-            return
-
-        total_price = sum(item['subtotal'] for item in self.sale_items)
-        try:
-            # Save sale to database
-            sale_id = self.db.add_sale(
-                patient_id=patient_id,
-                user_id=self.main_window.current_user['user_id'],
-                total_price=total_price,
-                items=self.sale_items
-            )
-
-            # Generate PDF receipt
-            self.generate_receipt(sale_id)
-
-            QMessageBox.information(self, "Success", "Sale saved successfully. Receipt generated.")
-            self.clear_form()
+                raise ValueError("Quantity must be positive.")
+            drug = self.db.get_drug(drug_data['drug_id'])
+            if drug['quantity'] < quantity:
+                raise ValueError(f"Insufficient stock for {drug['name']}. Available: {drug['quantity']}")
+            self.sale_items.append({
+                'drug_id': drug_data['drug_id'],
+                'name': drug['name'],
+                'quantity': quantity,
+                'price': drug_data['price']
+            })
+            self.load_sale_items()
+            self.quantity_input.clear()
         except ValueError as e:
-            QMessageBox.warning(self, "Stock Error", str(e))
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to save sale: {str(e)}")
+            QMessageBox.warning(self, "Error", str(e))
 
-    def generate_receipt(self, sale_id):
+    def load_sale_items(self):
+        """Load sale items into the table."""
+        self.sale_items_table.setRowCount(len(self.sale_items))
+        for row, item in enumerate(self.sale_items):
+            self.sale_items_table.setItem(row, 0, QTableWidgetItem(item['name']))
+            self.sale_items_table.setItem(row, 1, QTableWidgetItem(str(item['quantity'])))
+            self.sale_items_table.setItem(row, 2, QTableWidgetItem(f"{item['price']:.2f}"))
+            self.sale_items_table.setItem(row, 3, QTableWidgetItem(f"{item['quantity'] * item['price']:.2f}"))
+
+    def clear_sale(self):
+        """Clear the sale form."""
+        self.sale_items = []
+        self.load_sale_items()
+        self.patient_combo.setCurrentIndex(0)
+        self.drug_combo.setCurrentIndex(0)
+        self.quantity_input.clear()
+        self.price_input.clear()
+
+    def add_sale(self):
+        """Add a new sale."""
+        patient_id = self.patient_combo.currentData()
+        if not patient_id:
+            QMessageBox.warning(self, "Error", "Please select a patient.")
+            return
+
+        if not self.sale_items:
+            QMessageBox.warning(self, "Error", "No items added to the sale.")
+            return
+
+        try:
+            total_price = sum(item['quantity'] * item['price'] for item in self.sale_items)
+            sale_id = self.db.add_sale(
+                patient_id, self.main_window.current_user['user_id'], total_price, self.sale_items
+            )
+            # Get patient details for receipt
+            patient = self.db.get_patient(patient_id)
+            patient_name = f"{patient['first_name']} {patient['last_name']}"
+            patient_contact = patient['contact']
+            sale_date = self.db.get_sale(sale_id)['sale_date']
+            # Generate receipt
+            self.generate_receipt(sale_id, patient_name, patient_contact, self.sale_items, total_price, sale_date)
+            QMessageBox.information(self, "Success", f"Sale added successfully. Sale ID: {sale_id}")
+            self.sale_items = []
+            self.load_sale_items()
+            self.main_window.check_low_stock_alerts()
+        except ValueError as e:
+            QMessageBox.warning(self, "Error", str(e))
+
+    def generate_receipt(self, sale_id, patient_name, patient_contact, sale_items, total_price, sale_date):
         """Generate a PDF receipt for the sale."""
-        sale_details = self.db.get_sale_details(sale_id)
-        sale = sale_details['sale']
-        items = sale_details['items']
-
-        # Open file dialog to choose save location
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save Receipt", f"sale_{sale_id}_receipt.pdf", "PDF Files (*.pdf)"
-        )
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Receipt", f"receipt_{sale_id}.pdf", "PDF Files (*.pdf)")
         if not file_path:
             return
 
-        c = canvas.Canvas(file_path, pagesize=A4)
-        c.setFont("Helvetica", 12)
-        y = 800
+        pdf = SimpleDocTemplate(file_path, pagesize=A4)
+        styles = getSampleStyleSheet()
+        elements = []
 
-        # Header
-        c.drawString(100, y, "MicroClinicPlus Pharmacy")
-        c.drawString(100, y - 20, "Sale Receipt")
-        y -= 50
+        # Clinic Header
+        logo_path = "assets/logo.png"
+        if os.path.exists(logo_path):
+            try:
+                elements.append(Image(logo_path, width=100, height=100))
+            except Exception as e:
+                elements.append(Paragraph(f"Error loading logo: {str(e)}", styles['Normal']))
+        else:
+            elements.append(Paragraph("MicroClinicPlus Logo", styles['Normal']))
+        elements.append(Paragraph("MicroClinicPlus Pharmacy", styles['Heading1']))
+        elements.append(Paragraph("Nairobi, Kenya", styles['Normal']))
+        elements.append(Spacer(1, 12))
 
-        # Sale details
-        c.drawString(100, y, f"Sale ID: {sale['sale_id']}")
-        c.drawString(100, y - 20, f"Date: {sale['sale_date']}")
-        c.drawString(100, y - 40, f"Patient: {sale['first_name']} {sale['last_name']}")
-        y -= 80
+        # Receipt Details
+        elements.append(Paragraph(f"Receipt ID: {sale_id}", styles['Normal']))
+        elements.append(Paragraph(f"Date: {sale_date}", styles['Normal']))
+        elements.append(Paragraph(f"Patient: {patient_name or 'N/A'}", styles['Normal']))
+        elements.append(Paragraph(f"Contact: {patient_contact or 'N/A'}", styles['Normal']))
+        elements.append(Spacer(1, 12))
 
-        # Items table
-        c.drawString(100, y, "Items:")
-        c.drawString(100, y - 20, "Drug Name")
-        c.drawString(250, y - 20, "Quantity")
-        c.drawString(350, y - 20, "Unit Price")
-        c.drawString(450, y - 20, "Subtotal")
-        y -= 40
-
-        for item in items:
-            c.drawString(100, y, item['name'])
-            c.drawString(250, y, str(item['quantity_sold']))
-            c.drawString(350, y, f"{item['unit_price']:.2f}")
-            c.drawString(450, y, f"{item['quantity_sold'] * item['unit_price']:.2f}")
-            y -= 20
+        # Items Table
+        data = [["Drug", "Quantity", "Price (KES)", "Subtotal (KES)"]]
+        for item in sale_items:
+            data.append([
+                item['name'],
+                str(item['quantity']),
+                f"{item['price']:.2f}",
+                f"{item['quantity'] * item['price']:.2f}"
+            ])
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 12))
 
         # Total
-        y -= 20
-        c.drawString(100, y, f"Total Price: KES {sale['total_price']:.2f}")
+        elements.append(Paragraph(f"Total: KES {total_price:.2f}", styles['Heading2']))
+        elements.append(Spacer(1, 24))
 
-        c.showPage()
-        c.save()
+        # Footer
+        elements.append(Paragraph("Thank you for choosing MicroClinicPlus!", styles['Normal']))
+        elements.append(Paragraph("Contact: +254 700 123 456 | Email: info@microclinicplus.co.ke", styles['Normal']))
 
-    def clear_form(self):
-        """Clear all inputs and reset sale items."""
-        self.patient_search.clear()
-        self.populate_patients()
-        self.quantity_input.clear()
-        self.sale_items = []
-        self.update_sale_table()
-        self.total_label.clear()
+        pdf.build(elements)
+        QMessageBox.information(self, "Success", f"Receipt saved to {file_path}")
