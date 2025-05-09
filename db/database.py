@@ -33,3 +33,35 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM patients")
             return cursor.fetchall()
+
+    def add_prescription(self, patient_id, user_id, diagnosis, notes, drug_name, dosage, frequency, duration):
+        """Add a prescription and its item to the prescriptions and prescription_items tables."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # Insert into prescriptions table
+            cursor.execute("""
+                INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes)
+                VALUES (?, ?, ?, ?)
+            """, (patient_id, user_id, diagnosis, notes))
+            prescription_id = cursor.lastrowid
+            # Insert into prescription_items table
+            cursor.execute("""
+                INSERT INTO prescription_items (prescription_id, drug_id, dosage_instructions, quantity_prescribed)
+                VALUES (?, ?, ?, ?)
+            """, (prescription_id, 1, f"{dosage}, {frequency}, for {duration}", 1))  # drug_id=1 as placeholder
+            conn.commit()
+            return prescription_id
+
+    def get_patient_prescriptions(self, patient_id):
+        """Retrieve all prescriptions for a patient, including prescription items."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT p.prescription_id, p.prescription_date, p.diagnosis, p.notes,
+                       pi.dosage_instructions
+                FROM prescriptions p
+                JOIN prescription_items pi ON p.prescription_id = pi.prescription_id
+                WHERE p.patient_id = ?
+            """, (patient_id,))
+            return cursor.fetchall()
