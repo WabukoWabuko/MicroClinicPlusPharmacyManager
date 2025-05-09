@@ -1,7 +1,11 @@
 import sqlite3
+import pandas as pd
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget,
                              QTableWidgetItem, QHeaderView, QLineEdit, QPushButton,
-                             QTabWidget)
+                             QTabWidget, QFileDialog)
 from PyQt6.QtCore import Qt
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -44,8 +48,16 @@ class ReportingDashboardWidget(QWidget):
         self.sales_filter.setPlaceholderText("Filter by patient name...")
         self.sales_filter.textChanged.connect(self.filter_sales)
         sales_filter_layout.addWidget(self.sales_filter)
+        sales_export_layout = QHBoxLayout()
+        sales_csv_button = QPushButton("Export to CSV")
+        sales_pdf_button = QPushButton("Export to PDF")
+        sales_csv_button.clicked.connect(lambda: self.export_sales_csv())
+        sales_pdf_button.clicked.connect(lambda: self.export_sales_pdf())
+        sales_export_layout.addWidget(sales_csv_button)
+        sales_export_layout.addWidget(sales_pdf_button)
         sales_layout.addLayout(sales_filter_layout)
         sales_layout.addWidget(self.sales_table)
+        sales_layout.addLayout(sales_export_layout)
         self.sales_tab.setLayout(sales_layout)
         self.tabs.addTab(self.sales_tab, "Sales")
 
@@ -57,7 +69,13 @@ class ReportingDashboardWidget(QWidget):
         self.prescriptions_table.setHorizontalHeaderLabels(["Username", "Prescription Count", "Last Prescription", "Total Quantity"])
         self.prescriptions_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.prescriptions_table.setSortingEnabled(True)
+        prescriptions_export_layout = QHBoxLayout()
+        prescriptions_csv_button = QPushButton("Export to CSV")
+        prescriptions_pdf_button = QPushButton("Export to PDF")
+        prescriptions_csv_button.clicked.connect(lambda: self.export_prescriptions_csv())
+        prescriptions_pdf_button.clicked.connect(lambda: self.export_prescriptions_pdf())
         prescriptions_layout.addWidget(self.prescriptions_table)
+        prescriptions_layout.addLayout(prescriptions_export_layout)
         self.prescriptions_tab.setLayout(prescriptions_layout)
         self.tabs.addTab(self.prescriptions_tab, "Prescriptions by User")
 
@@ -69,7 +87,13 @@ class ReportingDashboardWidget(QWidget):
         self.low_stock_table.setHorizontalHeaderLabels(["Drug ID", "Name", "Quantity", "Batch Number", "Expiry Date"])
         self.low_stock_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.low_stock_table.setSortingEnabled(True)
+        low_stock_export_layout = QHBoxLayout()
+        low_stock_csv_button = QPushButton("Export to CSV")
+        low_stock_pdf_button = QPushButton("Export to PDF")
+        low_stock_csv_button.clicked.connect(lambda: self.export_low_stock_csv())
+        low_stock_pdf_button.clicked.connect(lambda: self.export_low_stock_pdf())
         low_stock_layout.addWidget(self.low_stock_table)
+        low_stock_layout.addLayout(low_stock_export_layout)
         self.low_stock_tab.setLayout(low_stock_layout)
         self.tabs.addTab(self.low_stock_tab, "Low Stock Drugs")
 
@@ -191,3 +215,123 @@ class ReportingDashboardWidget(QWidget):
         self.ax.grid(True)
         plt.setp(self.ax.get_xticklabels(), rotation=45, ha="right")
         self.canvas.draw()
+
+    def export_sales_csv(self):
+        """Export sales table to CSV."""
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Sales CSV", "", "CSV Files (*.csv)")
+        if file_path:
+            data = []
+            headers = ["Sale ID", "Date", "Patient", "Total Price"]
+            for row in range(self.sales_table.rowCount()):
+                row_data = []
+                for col in range(self.sales_table.columnCount()):
+                    item = self.sales_table.item(row, col)
+                    row_data.append(item.text() if item else "")
+                data.append(row_data)
+            df = pd.DataFrame(data, columns=headers)
+            df.to_csv(file_path, index=False)
+
+    def export_sales_pdf(self):
+        """Export sales table to PDF."""
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Sales PDF", "", "PDF Files (*.pdf)")
+        if file_path:
+            data = [["Sale ID", "Date", "Patient", "Total Price"]]
+            for row in range(self.sales_table.rowCount()):
+                row_data = []
+                for col in range(self.sales_table.columnCount()):
+                    item = self.sales_table.item(row, col)
+                    row_data.append(item.text() if item else "")
+                data.append(row_data)
+            pdf = SimpleDocTemplate(file_path, pagesize=A4)
+            table = Table(data)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            pdf.build([table])
+
+    def export_prescriptions_csv(self):
+        """Export prescriptions table to CSV."""
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Prescriptions CSV", "", "CSV Files (*.csv)")
+        if file_path:
+            data = []
+            headers = ["Username", "Prescription Count", "Last Prescription", "Total Quantity"]
+            for row in range(self.prescriptions_table.rowCount()):
+                row_data = []
+                for col in range(self.prescriptions_table.columnCount()):
+                    item = self.prescriptions_table.item(row, col)
+                    row_data.append(item.text() if item else "")
+                data.append(row_data)
+            df = pd.DataFrame(data, columns=headers)
+            df.to_csv(file_path, index=False)
+
+    def export_prescriptions_pdf(self):
+        """Export prescriptions table to PDF."""
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Prescriptions PDF", "", "PDF Files (*.pdf)")
+        if file_path:
+            data = [["Username", "Prescription Count", "Last Prescription", "Total Quantity"]]
+            for row in range(self.prescriptions_table.rowCount()):
+                row_data = []
+                for col in range(self.prescriptions_table.columnCount()):
+                    item = self.prescriptions_table.item(row, col)
+                    row_data.append(item.text() if item else "")
+                data.append(row_data)
+            pdf = SimpleDocTemplate(file_path, pagesize=A4)
+            table = Table(data)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            pdf.build([table])
+
+    def export_low_stock_csv(self):
+        """Export low stock table to CSV."""
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Low Stock CSV", "", "CSV Files (*.csv Mehr
+           if file_path:
+               data = []
+               headers = ["Drug ID", "Name", "Quantity", "Batch Number", "Expiry Date"]
+               for row in range(self.low_stock_table.rowCount()):
+                   row_data = []
+                   for col in range(self.low_stock_table.columnCount()):
+                       item = self.low_stock_table.item(row, col)
+                       row_data.append(item.text() if item else "")
+                   data.append(row_data)
+               df = pd.DataFrame(data, columns=headers)
+               df.to_csv(file_path, index=False)
+
+    def export_low_stock_pdf(self):
+        """Export low stock table to PDF."""
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Low Stock PDF", "", "PDF Files (*.pdf)")
+        if file_path:
+            data = [["Drug ID", "Name", "Quantity", "Batch Number", "Expiry Date"]]
+            for row in range(self.low_stock_table.rowCount()):
+                row_data = []
+                for col in range(self.low_stock_table.columnCount()):
+                    item = self.low_stock_table.item(row, col)
+                    row_data.append(item.text() if item else "")
+                data.append(row_data)
+            pdf = SimpleDocTemplate(file_path, pagesize=A4)
+            table = Table(data)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            pdf.build([table])
