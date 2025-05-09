@@ -1,24 +1,20 @@
-import sys
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                              QFormLayout, QLineEdit, QComboBox, QTextEdit, QPushButton,
                              QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox)
 from PyQt6.QtCore import QDate
 from db.database import Database
 
-class PatientManagementWindow(QMainWindow):
-    def __init__(self):
+class PatientManagementWidget(QWidget):
+    def __init__(self, main_window):
         super().__init__()
-        self.setWindowTitle("Patient Management - MicroClinicPlusPharmacyManager")
-        self.setGeometry(100, 100, 800, 600)
+        self.main_window = main_window
         self.db = Database()
         self.init_ui()
 
     def init_ui(self):
-        # Main widget and layout
-        main_widget = QWidget()
-        self.setCentralWidget(main_widget)
+        # Main layout
         main_layout = QVBoxLayout()
-        main_widget.setLayout(main_layout)
+        self.setLayout(main_layout)
 
         # Form layout for patient details
         form_layout = QFormLayout()
@@ -43,12 +39,15 @@ class PatientManagementWindow(QMainWindow):
         save_button = QPushButton("Save")
         clear_button = QPushButton("Clear")
         view_button = QPushButton("View All")
+        back_button = QPushButton("Back")
         save_button.clicked.connect(self.save_patient)
         clear_button.clicked.connect(self.clear_form)
         view_button.clicked.connect(self.view_patients)
+        back_button.clicked.connect(self.main_window.show_menu)
         button_layout.addWidget(save_button)
         button_layout.addWidget(clear_button)
         button_layout.addWidget(view_button)
+        button_layout.addWidget(back_button)
 
         # Table for viewing patients
         self.table = QTableWidget()
@@ -116,9 +115,3 @@ class PatientManagementWindow(QMainWindow):
             self.table.setItem(row, 4, QTableWidgetItem(patient['gender']))
             self.table.setItem(row, 5, QTableWidgetItem(patient['phone'] or ""))
             self.table.setItem(row, 6, QTableWidgetItem(patient['address'] or ""))
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = PatientManagementWindow()
-    window.show()
-    sys.exit(app.exec())

@@ -1,23 +1,19 @@
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
                              QComboBox, QLineEdit, QTextEdit, QPushButton, QTableWidget,
                              QTableWidgetItem, QHeaderView, QMessageBox)
-from PyQt6.QtCore import QDate
 from db.database import Database
 
-class PrescriptionLoggingWindow(QMainWindow):
-    def __init__(self):
+class PrescriptionLoggingWidget(QWidget):
+    def __init__(self, main_window):
         super().__init__()
-        self.setWindowTitle("Prescription Logging - MicroClinicPlusPharmacyManager")
-        self.setGeometry(100, 100, 800, 600)
+        self.main_window = main_window
         self.db = Database()
         self.init_ui()
 
     def init_ui(self):
-        # Main widget and layout
-        main_widget = QWidget()
-        self.setCentralWidget(main_widget)
+        # Main layout
         main_layout = QVBoxLayout()
-        main_widget.setLayout(main_layout)
+        self.setLayout(main_layout)
 
         # Form layout for prescription details
         form_layout = QFormLayout()
@@ -44,12 +40,15 @@ class PrescriptionLoggingWindow(QMainWindow):
         save_button = QPushButton("Save")
         clear_button = QPushButton("Clear")
         view_button = QPushButton("View History")
+        back_button = QPushButton("Back")
         save_button.clicked.connect(self.save_prescription)
         clear_button.clicked.connect(self.clear_form)
         view_button.clicked.connect(self.view_prescriptions)
+        back_button.clicked.connect(self.main_window.show_menu)
         button_layout.addWidget(save_button)
         button_layout.addWidget(clear_button)
         button_layout.addWidget(view_button)
+        button_layout.addWidget(back_button)
 
         # Table for viewing prescription history
         self.table = QTableWidget()

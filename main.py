@@ -1,35 +1,58 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton
-from ui.patient_management import PatientManagementWindow
-from ui.prescription_logging import PrescriptionLoggingWindow
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QStackedWidget
+from ui.patient_management import PatientManagementWidget
+from ui.prescription_logging import PrescriptionLoggingWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("MicroClinicPlusPharmacyManager")
-        self.setGeometry(100, 100, 400, 300)
+        self.setGeometry(100, 100, 800, 600)
         self.init_ui()
 
     def init_ui(self):
+        # Main widget and stacked widget
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
-        layout = QVBoxLayout()
-        main_widget.setLayout(layout)
+        self.main_layout = QVBoxLayout()
+        main_widget.setLayout(self.main_layout)
+
+        self.stacked_widget = QStackedWidget()
+        self.main_layout.addWidget(self.stacked_widget)
+
+        # Create menu page
+        self.menu_widget = QWidget()
+        menu_layout = QVBoxLayout()
+        self.menu_widget.setLayout(menu_layout)
 
         patient_button = QPushButton("Patient Management")
         prescription_button = QPushButton("Prescription Logging")
-        patient_button.clicked.connect(self.open_patient_management)
-        prescription_button.clicked.connect(self.open_prescription_logging)
-        layout.addWidget(patient_button)
-        layout.addWidget(prescription_button)
+        patient_button.clicked.connect(self.show_patient_management)
+        prescription_button.clicked.connect(self.show_prescription_logging)
+        menu_layout.addWidget(patient_button)
+        menu_layout.addWidget(prescription_button)
+        menu_layout.addStretch()
 
-    def open_patient_management(self):
-        self.patient_window = PatientManagementWindow()
-        self.patient_window.show()
+        # Create page widgets
+        self.patient_management = PatientManagementWidget(self)
+        self.prescription_logging = PrescriptionLoggingWidget(self)
 
-    def open_prescription_logging(self):
-        self.prescription_window = PrescriptionLoggingWindow()
-        self.prescription_window.show()
+        # Add pages to stacked widget
+        self.stacked_widget.addWidget(self.menu_widget)
+        self.stacked_widget.addWidget(self.patient_management)
+        self.stacked_widget.addWidget(self.prescription_logging)
+
+        # Set initial page to menu
+        self.stacked_widget.setCurrentWidget(self.menu_widget)
+
+    def show_patient_management(self):
+        self.stacked_widget.setCurrentWidget(self.patient_management)
+
+    def show_prescription_logging(self):
+        self.stacked_widget.setCurrentWidget(self.prescription_logging)
+
+    def show_menu(self):
+        self.stacked_widget.setCurrentWidget(self.menu_widget)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
