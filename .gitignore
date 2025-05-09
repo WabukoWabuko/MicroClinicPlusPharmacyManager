@@ -23,3 +23,5 @@ data/clinic.db
 
 assets/*.png
 !assets/logo.png
+
+utils/__pycache__/

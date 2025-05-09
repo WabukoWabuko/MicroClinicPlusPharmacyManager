@@ -1,7 +1,8 @@
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
-                             QComboBox, QLineEdit, QTextEdit, QPushButton, QTableWidget,
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+                             QLineEdit, QTextEdit, QPushButton, QTableWidget,
                              QTableWidgetItem, QHeaderView, QMessageBox)
 from db.database import Database
+from utils.validation import is_valid_quantity, is_valid_name
 
 class PrescriptionLoggingWidget(QWidget):
     def __init__(self, main_window):
@@ -11,174 +12,177 @@ class PrescriptionLoggingWidget(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        # Main layout
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
-        # Patient search and selection
-        search_layout = QHBoxLayout()
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by patient name...")
-        self.search_input.textChanged.connect(self.search_patients)
-        self.patient_combo = QComboBox()
-        search_layout.addWidget(self.search_input)
-        search_layout.addWidget(self.patient_combo)
+        # Prescription form
+        form_layout = QHBoxLayout()
+        left_form = QVBoxLayout()
+        right_form = QVBoxLayout()
 
-        # Form layout for prescription details
-        form_layout = QFormLayout()
-        form_layout.addRow("Patient:", search_layout)
+        self.patient_combo = QComboBox()
+        self.diagnosis_input = QLineEdit()
+        self.notes_input = QTextEdit()
         self.drug_combo = QComboBox()
-        self.quantity_input = QLineEdit()
-        self.quantity_input.setPlaceholderText("Quantity")
         self.dosage_input = QLineEdit()
         self.frequency_input = QLineEdit()
         self.duration_input = QLineEdit()
-        self.notes_input = QTextEdit()
-        self.notes_input.setMaximumHeight(50)
-        self.diagnosis_input = QLineEdit()
+        self.quantity_input = QLineEdit()
 
-        form_layout.addRow("Drug:", self.drug_combo)
-        form_layout.addRow("Quantity:", self.quantity_input)
-        form_layout.addRow("Dosage:", self.dosage_input)
-        form_layout.addRow("Frequency:", self.frequency_input)
-        form_layout.addRow("Duration:", self.duration_input)
-        form_layout.addRow("Diagnosis:", self.diagnosis_input)
-        form_layout.addRow("Notes:", self.notes_input)
+        left_form.addWidget(QLabel("Patient:"))
+        left_form.addWidget(self.patient_combo)
+        left_form.addWidget(QLabel("Diagnosis:"))
+        left_form.addWidget(self.diagnosis_input)
+        left_form.addWidget(QLabel("Notes:"))
+        left_form.addWidget(self.notes_input)
+        right_form.addWidget(QLabel("Drug:"))
+        right_form.addWidget(self.drug_combo)
+        right_form.addWidget(QLabel("Dosage:"))
+        right_form.addWidget(self.dosage_input)
+        right_form.addWidget(QLabel("Frequency:"))
+        right_form.addWidget(self.frequency_input)
+        right_form.addWidget(QLabel("Duration:"))
+        right_form.addWidget(self.duration_input)
+        right_form.addWidget(QLabel("Quantity:"))
+        right_form.addWidget(self.quantity_input)
+
+        form_layout.addLayout(left_form)
+        form_layout.addLayout(right_form)
+        main_layout.addLayout(form_layout)
 
         # Buttons
         button_layout = QHBoxLayout()
-        save_button = QPushButton("Save")
+        add_button = QPushButton("Add Prescription")
         clear_button = QPushButton("Clear")
-        view_button = QPushButton("View History")
         back_button = QPushButton("Back")
-        save_button.clicked.connect(self.save_prescription)
+        add_button.clicked.connect(self.add_prescription)
         clear_button.clicked.connect(self.clear_form)
-        view_button.clicked.connect(self.view_prescriptions)
         back_button.clicked.connect(self.main_window.show_menu)
-        button_layout.addWidget(save_button)
+        button_layout.addWidget(add_button)
         button_layout.addWidget(clear_button)
-        button_layout.addWidget(view_button)
         button_layout.addWidget(back_button)
-
-        # Table for viewing prescription history
-        self.table = QTableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels([
-            "Prescription ID", "Date", "Drug", "Quantity", "Diagnosis", "Notes"
-        ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-
-        # Add to main layout
-        main_layout.addLayout(form_layout)
         main_layout.addLayout(button_layout)
-        main_layout.addWidget(self.table)
 
-        # Populate dropdowns
-        self.populate_patients()
-        self.populate_drugs()
+        # Prescription table
+        self.prescription_table = QTableWidget()
+        self.prescription_table.setColumnCount(5)
+        self.prescription_table.setHorizontalHeaderLabels(["ID", "Patient", "Drug", "Date", "Quantity"])
+        self.prescription_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        main_layout.addWidget(self.prescription_table)
 
-    def populate_patients(self, patients=None):
-        """Populate patient dropdown with patients, optionally filtered."""
-        self.patient_combo.clear()
-        if patients is None:
-            patients = self.db.get_all_patients()
+        self.load_patients()
+        self.load_drugs()
+        self.load_prescriptions()
+
+    def load_patients(self):
+        patients = self.db.get_all_patients()
+        self.patient_combo.addItem("Select Patient", None)
         for patient in patients:
-            self.patient_combo.addItem(
-                f"{patient['first_name']} {patient['last_name']}",
-                patient['patient_id']
-            )
+            self.patient_combo.addItem(f"{patient['first_name']} {patient['last_name']}", patient['patient_id'])
 
-    def search_patients(self):
-        """Filter patients in dropdown based on search term."""
-        search_term = self.search_input.text().strip()
-        if search_term:
-            patients = self.db.search_patients(search_term)
-        else:
-            patients = self.db.get_all_patients()
-        self.populate_patients(patients)
-
-    def populate_drugs(self):
-        """Populate drug dropdown with available inventory."""
-        self.drug_combo.clear()
+    def load_drugs(self):
         drugs = self.db.get_all_drugs()
+        self.drug_combo.addItem("Select Drug", None)
         for drug in drugs:
-            if drug['quantity'] > 0:  # Only show drugs with stock
-                self.drug_combo.addItem(
-                    f"{drug['name']} (Stock: {drug['quantity']})",
-                    drug['drug_id']
-                )
+            self.drug_combo.addItem(drug['name'], drug['drug_id'])
 
-    def save_prescription(self):
-        """Save prescription to the database."""
+    def load_prescriptions(self):
+        prescriptions = self.db.get_all_prescriptions()
+        self.prescription_table.setRowCount(len(prescriptions))
+        for row, prescription in enumerate(prescriptions):
+            patient = self.db.get_patient(prescription['patient_id'])
+            drug = self.db.get_drug(prescription['drug_id'])
+            self.prescription_table.setItem(row, 0, QTableWidgetItem(str(prescription['prescription_id'])))
+            self.prescription_table.setItem(row, 1, QTableWidgetItem(f"{patient['first_name']} {patient['last_name']}"))
+            self.prescription_table.setItem(row, 2, QTableWidgetItem(drug['name']))
+            self.prescription_table.setItem(row, 3, QTableWidgetItem(prescription['prescription_date']))
+            self.prescription_table.setItem(row, 4, QTableWidgetItem(str(prescription['quantity_prescribed'])))
+
+    def add_prescription(self):
         patient_id = self.patient_combo.currentData()
+        diagnosis = self.diagnosis_input.text().strip()
+        notes = self.notes_input.toPlainText().strip()
         drug_id = self.drug_combo.currentData()
-        quantity_text = self.quantity_input.text().strip()
         dosage = self.dosage_input.text().strip()
         frequency = self.frequency_input.text().strip()
         duration = self.duration_input.text().strip()
-        diagnosis = self.diagnosis_input.text().strip()
-        notes = self.notes_input.toPlainText().strip()
+        quantity = self.quantity_input.text().strip()
+
+        # Reset styles
+        self.diagnosis_input.setStyleSheet("")
+        self.dosage_input.setStyleSheet("")
+        self.frequency_input.setStyleSheet("")
+        self.duration_input.setStyleSheet("")
+        self.quantity_input.setStyleSheet("")
 
         # Validate inputs
-        if not (patient_id and drug_id and quantity_text and dosage and frequency and duration):
-            QMessageBox.warning(self, "Input Error", "All fields are required.")
+        if not patient_id:
+            QMessageBox.warning(self, "Error", "Please select a patient.")
+            return
+
+        is_valid, error = is_valid_name(diagnosis)
+        if not is_valid:
+            self.diagnosis_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", error)
+            return
+
+        if not drug_id:
+            QMessageBox.warning(self, "Error", "Please select a drug.")
+            return
+
+        is_valid, error = is_valid_name(dosage)
+        if not is_valid:
+            self.dosage_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", error)
+            return
+
+        is_valid, error = is_valid_name(frequency)
+        if not is_valid:
+            self.frequency_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", error)
+            return
+
+        is_valid, error = is_valid_name(duration)
+        if not is_valid:
+            self.duration_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", error)
+            return
+
+        is_valid, error = is_valid_quantity(quantity)
+        if not is_valid:
+            self.quantity_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", error)
             return
 
         try:
-            quantity = int(quantity_text)
-            if quantity <= 0:
-                raise ValueError
-        except ValueError:
-            QMessageBox.warning(self, "Input Error", "Quantity must be a positive integer.")
-            return
-
-        try:
-            # Save to database using logged-in user's ID
+            quantity_val = int(quantity)
+            drug = self.db.get_drug(drug_id)
+            if drug['quantity'] < quantity_val:
+                self.quantity_input.setStyleSheet("border: 1px solid red;")
+                QMessageBox.warning(self, "Error", f"Insufficient stock for {drug['name']}. Available: {drug['quantity']}")
+                return
             self.db.add_prescription(
-                patient_id=patient_id,
-                user_id=self.main_window.current_user['user_id'],
-                diagnosis=diagnosis,
-                notes=notes,
-                drug_id=drug_id,
-                dosage=dosage,
-                frequency=frequency,
-                duration=duration,
-                quantity_prescribed=quantity
+                patient_id, self.main_window.current_user['user_id'],
+                diagnosis, notes, drug_id, dosage, frequency, duration, quantity_val
             )
-            QMessageBox.information(self, "Success", "Prescription saved successfully.")
+            QMessageBox.information(self, "Success", "Prescription added successfully.")
+            self.load_prescriptions()
+            self.main_window.check_low_stock_alerts()
             self.clear_form()
         except ValueError as e:
-            QMessageBox.warning(self, "Stock Error", str(e))
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to save prescription: {str(e)}")
+            QMessageBox.warning(self, "Error", str(e))
 
     def clear_form(self):
-        """Clear all input fields."""
-        self.search_input.clear()  # Clear search
-        self.populate_patients()  # Reset patient dropdown
-        self.quantity_input.clear()
+        self.patient_combo.setCurrentIndex(0)
+        self.diagnosis_input.clear()
+        self.notes_input.clear()
+        self.drug_combo.setCurrentIndex(0)
         self.dosage_input.clear()
         self.frequency_input.clear()
         self.duration_input.clear()
-        self.diagnosis_input.clear()
-        self.notes_input.clear()
-        self.table.setRowCount(0)  # Clear table
-        self.populate_drugs()  # Reset drug dropdown
-
-    def view_prescriptions(self):
-        """Display prescription history for the selected patient."""
-        patient_id = self.patient_combo.currentData()
-        if not patient_id:
-            QMessageBox.warning(self, "Selection Error", "Please select a patient.")
-            return
-
-        prescriptions = self.db.get_patient_prescriptions(patient_id)
-        self.table.setRowCount(len(prescriptions))
-
-        for row, prescription in enumerate(prescriptions):
-            self.table.setItem(row, 0, QTableWidgetItem(str(prescription['prescription_id'])))
-            self.table.setItem(row, 1, QTableWidgetItem(prescription['prescription_date']))
-            self.table.setItem(row, 2, QTableWidgetItem(prescription['drug_name']))
-            self.table.setItem(row, 3, QTableWidgetItem(str(prescription['quantity_prescribed'])))
-            self.table.setItem(row, 4, QTableWidgetItem(prescription['diagnosis'] or ""))
-            self.table.setItem(row, 5, QTableWidgetItem(prescription['notes'] or ""))
+        self.quantity_input.clear()
+        self.diagnosis_input.setStyleSheet("")
+        self.dosage_input.setStyleSheet("")
+        self.frequency_input.setStyleSheet("")
+        self.duration_input.setStyleSheet("")
+        self.quantity_input.setStyleSheet("")

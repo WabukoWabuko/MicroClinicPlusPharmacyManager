@@ -167,6 +167,14 @@ class Database:
                 VALUES (?, ?, ?, ?, ?)
             """, (name, quantity, batch_number, expiry_date, price))
             conn.commit()
+            
+    def get_drug(self, drug_id):
+        """Retrieve a drug by its ID."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM inventory WHERE drug_id = ?", (drug_id,))
+            return cursor.fetchone()
 
     def get_all_drugs(self):
         """Retrieve all drugs from the inventory table."""

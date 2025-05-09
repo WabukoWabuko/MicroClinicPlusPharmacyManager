@@ -8,6 +8,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 import os
+from utils.validation import is_valid_quantity
 
 class SalesManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -75,7 +76,6 @@ class SalesManagementWidget(QWidget):
         self.load_drugs()
 
     def load_patients(self):
-        """Load patients into the combo box."""
         patients = self.db.get_all_patients()
         self.patient_combo.clear()
         self.patient_combo.addItem("Select Patient", None)
@@ -85,7 +85,6 @@ class SalesManagementWidget(QWidget):
             )
 
     def load_drugs(self):
-        """Load drugs into the combo box."""
         drugs = self.db.get_all_drugs()
         self.drug_combo.clear()
         self.drug_combo.addItem("Select Drug", None)
@@ -94,7 +93,6 @@ class SalesManagementWidget(QWidget):
         self.drug_combo.currentIndexChanged.connect(self.update_price)
 
     def update_price(self):
-        """Update price field based on selected drug."""
         drug_data = self.drug_combo.currentData()
         if drug_data:
             self.price_input.setText(f"{drug_data['price']:.2f}")
@@ -102,34 +100,43 @@ class SalesManagementWidget(QWidget):
             self.price_input.clear()
 
     def add_sale_item(self):
-        """Add a drug item to the sale."""
         drug_data = self.drug_combo.currentData()
         quantity = self.quantity_input.text().strip()
 
-        if not drug_data or not quantity:
-            QMessageBox.warning(self, "Error", "Please select a drug and enter a quantity.")
+        # Reset styles
+        self.quantity_input.setStyleSheet("")
+
+        # Validate inputs
+        if not drug_data:
+            QMessageBox.warning(self, "Error", "Please select a drug.")
+            return
+
+        is_valid, error = is_valid_quantity(quantity)
+        if not is_valid:
+            self.quantity_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", error)
             return
 
         try:
-            quantity = int(quantity)
-            if quantity <= 0:
-                raise ValueError("Quantity must be positive.")
+            quantity_val = int(quantity)
             drug = self.db.get_drug(drug_data['drug_id'])
-            if drug['quantity'] < quantity:
-                raise ValueError(f"Insufficient stock for {drug['name']}. Available: {drug['quantity']}")
+            if drug['quantity'] < quantity_val:
+                self.quantity_input.setStyleSheet("border: 1px solid red;")
+                QMessageBox.warning(self, "Error", f"Insufficient stock for {drug['name']}. Available: {drug['quantity']}")
+                return
             self.sale_items.append({
                 'drug_id': drug_data['drug_id'],
                 'name': drug['name'],
-                'quantity': quantity,
+                'quantity': quantity_val,
                 'price': drug_data['price']
             })
             self.load_sale_items()
             self.quantity_input.clear()
         except ValueError as e:
+            self.quantity_input.setStyleSheet("border: 1px solid red;")
             QMessageBox.warning(self, "Error", str(e))
 
     def load_sale_items(self):
-        """Load sale items into the table."""
         self.sale_items_table.setRowCount(len(self.sale_items))
         for row, item in enumerate(self.sale_items):
             self.sale_items_table.setItem(row, 0, QTableWidgetItem(item['name']))
@@ -138,16 +145,15 @@ class SalesManagementWidget(QWidget):
             self.sale_items_table.setItem(row, 3, QTableWidgetItem(f"{item['quantity'] * item['price']:.2f}"))
 
     def clear_sale(self):
-        """Clear the sale form."""
         self.sale_items = []
         self.load_sale_items()
         self.patient_combo.setCurrentIndex(0)
         self.drug_combo.setCurrentIndex(0)
         self.quantity_input.clear()
         self.price_input.clear()
+        self.quantity_input.setStyleSheet("")
 
     def add_sale(self):
-        """Add a new sale."""
         patient_id = self.patient_combo.currentData()
         if not patient_id:
             QMessageBox.warning(self, "Error", "Please select a patient.")
@@ -162,12 +168,10 @@ class SalesManagementWidget(QWidget):
             sale_id = self.db.add_sale(
                 patient_id, self.main_window.current_user['user_id'], total_price, self.sale_items
             )
-            # Get patient details for receipt
             patient = self.db.get_patient(patient_id)
             patient_name = f"{patient['first_name']} {patient['last_name']}"
             patient_contact = patient['contact']
             sale_date = self.db.get_sale(sale_id)['sale_date']
-            # Generate receipt
             self.generate_receipt(sale_id, patient_name, patient_contact, self.sale_items, total_price, sale_date)
             QMessageBox.information(self, "Success", f"Sale added successfully. Sale ID: {sale_id}")
             self.sale_items = []
@@ -177,7 +181,6 @@ class SalesManagementWidget(QWidget):
             QMessageBox.warning(self, "Error", str(e))
 
     def generate_receipt(self, sale_id, patient_name, patient_contact, sale_items, total_price, sale_date):
-        """Generate a PDF receipt for the sale."""
         file_path, _ = QFileDialog.getSaveFileName(self, "Save Receipt", f"receipt_{sale_id}.pdf", "PDF Files (*.pdf)")
         if not file_path:
             return
@@ -186,7 +189,6 @@ class SalesManagementWidget(QWidget):
         styles = getSampleStyleSheet()
         elements = []
 
-        # Clinic Header
         logo_path = "assets/logo.png"
         if os.path.exists(logo_path):
             try:
@@ -199,14 +201,12 @@ class SalesManagementWidget(QWidget):
         elements.append(Paragraph("Nairobi, Kenya", styles['Normal']))
         elements.append(Spacer(1, 12))
 
-        # Receipt Details
         elements.append(Paragraph(f"Receipt ID: {sale_id}", styles['Normal']))
         elements.append(Paragraph(f"Date: {sale_date}", styles['Normal']))
         elements.append(Paragraph(f"Patient: {patient_name or 'N/A'}", styles['Normal']))
         elements.append(Paragraph(f"Contact: {patient_contact or 'N/A'}", styles['Normal']))
         elements.append(Spacer(1, 12))
 
-        # Items Table
         data = [["Drug", "Quantity", "Price (KES)", "Subtotal (KES)"]]
         for item in sale_items:
             data.append([
@@ -229,11 +229,9 @@ class SalesManagementWidget(QWidget):
         elements.append(table)
         elements.append(Spacer(1, 12))
 
-        # Total
         elements.append(Paragraph(f"Total: KES {total_price:.2f}", styles['Heading2']))
         elements.append(Spacer(1, 24))
 
-        # Footer
         elements.append(Paragraph("Thank you for choosing MicroClinicPlus!", styles['Normal']))
         elements.append(Paragraph("Contact: +254 700 123 456 | Email: info@microclinicplus.co.ke", styles['Normal']))
 

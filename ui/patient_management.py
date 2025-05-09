@@ -1,8 +1,8 @@
-from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-                             QFormLayout, QLineEdit, QComboBox, QTextEdit, QPushButton,
-                             QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox)
-from PyQt6.QtCore import QDate
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+                             QComboBox, QTextEdit, QPushButton, QTableWidget,
+                             QTableWidgetItem, QHeaderView, QMessageBox)
 from db.database import Database
+from utils.validation import is_valid_name, is_valid_phone
 
 class PatientManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -12,107 +12,133 @@ class PatientManagementWidget(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        # Main layout
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
-        # Form layout for patient details
-        form_layout = QFormLayout()
+        # Form for adding patients
+        form_layout = QHBoxLayout()
+        left_form = QVBoxLayout()
+        right_form = QVBoxLayout()
+
         self.first_name_input = QLineEdit()
         self.last_name_input = QLineEdit()
         self.age_input = QLineEdit()
-        self.gender_input = QComboBox()
-        self.gender_input.addItems(["M", "F", "Other"])
-        self.phone_input = QLineEdit()
-        self.address_input = QTextEdit()
-        self.address_input.setMaximumHeight(50)
+        self.gender_combo = QComboBox()
+        self.gender_combo.addItems(["Male", "Female", "Other"])
+        self.contact_input = QLineEdit()
+        self.medical_history_input = QTextEdit()
 
-        form_layout.addRow("First Name:", self.first_name_input)
-        form_layout.addRow("Last Name:", self.last_name_input)
-        form_layout.addRow("Age:", self.age_input)
-        form_layout.addRow("Gender:", self.gender_input)
-        form_layout.addRow("Contact:", self.phone_input)
-        form_layout.addRow("Medical History:", self.address_input)
+        left_form.addWidget(QLabel("First Name:"))
+        left_form.addWidget(self.first_name_input)
+        left_form.addWidget(QLabel("Last Name:"))
+        left_form.addWidget(self.last_name_input)
+        left_form.addWidget(QLabel("Age:"))
+        left_form.addWidget(self.age_input)
+        right_form.addWidget(QLabel("Gender:"))
+        right_form.addWidget(self.gender_combo)
+        right_form.addWidget(QLabel("Contact:"))
+        right_form.addWidget(self.contact_input)
+        right_form.addWidget(QLabel("Medical History:"))
+        right_form.addWidget(self.medical_history_input)
+
+        form_layout.addLayout(left_form)
+        form_layout.addLayout(right_form)
+        main_layout.addLayout(form_layout)
 
         # Buttons
         button_layout = QHBoxLayout()
-        save_button = QPushButton("Save")
+        add_button = QPushButton("Add Patient")
         clear_button = QPushButton("Clear")
         back_button = QPushButton("Back")
-        save_button.clicked.connect(self.save_patient)
+        add_button.clicked.connect(self.add_patient)
         clear_button.clicked.connect(self.clear_form)
         back_button.clicked.connect(self.main_window.show_menu)
-        button_layout.addWidget(save_button)
+        button_layout.addWidget(add_button)
         button_layout.addWidget(clear_button)
         button_layout.addWidget(back_button)
-
-        # Table for viewing patients
-        self.table = QTableWidget()
-        self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels([
-            "ID", "First Name", "Last Name", "DOB", "Gender", "Phone", "Medical History"
-        ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-
-        # Add to main layout
-        main_layout.addLayout(form_layout)
         main_layout.addLayout(button_layout)
-        main_layout.addWidget(self.table)
 
-        # Populate table initially
-        self.populate_table()
+        # Patient table
+        self.patient_table = QTableWidget()
+        self.patient_table.setColumnCount(6)
+        self.patient_table.setHorizontalHeaderLabels(["ID", "First Name", "Last Name", "Age", "Gender", "Contact"])
+        self.patient_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        main_layout.addWidget(self.patient_table)
 
-    def populate_table(self):
-        """Display all patients in the table."""
+        self.load_patients()
+
+    def load_patients(self):
         patients = self.db.get_all_patients()
-        self.table.setRowCount(len(patients))
-
+        self.patient_table.setRowCount(len(patients))
         for row, patient in enumerate(patients):
-            self.table.setItem(row, 0, QTableWidgetItem(str(patient['patient_id'])))
-            self.table.setItem(row, 1, QTableWidgetItem(patient['first_name']))
-            self.table.setItem(row, 2, QTableWidgetItem(patient['last_name']))
-            self.table.setItem(row, 3, QTableWidgetItem(patient['date_of_birth']))
-            self.table.setItem(row, 4, QTableWidgetItem(patient['gender']))
-            self.table.setItem(row, 5, QTableWidgetItem(patient['phone'] or ""))
-            self.table.setItem(row, 6, QTableWidgetItem(patient['address'] or ""))
+            self.patient_table.setItem(row, 0, QTableWidgetItem(str(patient['patient_id'])))
+            self.patient_table.setItem(row, 1, QTableWidgetItem(patient['first_name']))
+            self.patient_table.setItem(row, 2, QTableWidgetItem(patient['last_name']))
+            self.patient_table.setItem(row, 3, QTableWidgetItem(str(patient['age'])))
+            self.patient_table.setItem(row, 4, QTableWidgetItem(patient['gender']))
+            self.patient_table.setItem(row, 5, QTableWidgetItem(patient['contact']))
 
-    def save_patient(self):
-        """Save patient data to the database and refresh table."""
+    def add_patient(self):
         first_name = self.first_name_input.text().strip()
         last_name = self.last_name_input.text().strip()
         age = self.age_input.text().strip()
-        gender = self.gender_input.currentText()
-        phone = self.phone_input.text().strip()
-        medical_history = self.address_input.toPlainText().strip()
+        gender = self.gender_combo.currentText()
+        contact = self.contact_input.text().strip()
+        medical_history = self.medical_history_input.toPlainText().strip()
+
+        # Reset styles
+        self.first_name_input.setStyleSheet("")
+        self.last_name_input.setStyleSheet("")
+        self.age_input.setStyleSheet("")
+        self.contact_input.setStyleSheet("")
 
         # Validate inputs
-        if not (first_name and last_name and age):
-            QMessageBox.warning(self, "Input Error", "First Name, Last Name, and Age are required.")
+        is_valid, error = is_valid_name(first_name)
+        if not is_valid:
+            self.first_name_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", error)
             return
 
+        is_valid, error = is_valid_name(last_name)
+        if not is_valid:
+            self.last_name_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", error)
+            return
+
+        if not age:
+            self.age_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", "Age is required.")
+            return
         try:
-            age = int(age)
-            if age <= 0:
-                raise ValueError
+            age_val = int(age)
+            if age_val <= 0 or age_val > 150:
+                self.age_input.setStyleSheet("border: 1px solid red;")
+                QMessageBox.warning(self, "Error", "Age must be between 1 and 150.")
+                return
         except ValueError:
-            QMessageBox.warning(self, "Input Error", "Age must be a positive number.")
+            self.age_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", "Age must be a number.")
             return
 
-        # Calculate date of birth (approximate, assuming current year)
-        current_year = QDate.currentDate().year()
-        date_of_birth = f"{current_year - age}-01-01"
+        is_valid, error = is_valid_phone(contact)
+        if not is_valid:
+            self.contact_input.setStyleSheet("border: 1px solid red;")
+            QMessageBox.warning(self, "Error", error)
+            return
 
-        # Save to database
-        self.db.add_patient(first_name, last_name, date_of_birth, gender, phone, medical_history)
-        QMessageBox.information(self, "Success", "Patient saved successfully.")
+        self.db.add_patient(first_name, last_name, age_val, gender, contact, medical_history)
+        QMessageBox.information(self, "Success", "Patient added successfully.")
+        self.load_patients()
         self.clear_form()
-        self.populate_table()  # Refresh table automatically
 
     def clear_form(self):
-        """Clear all input fields."""
         self.first_name_input.clear()
         self.last_name_input.clear()
         self.age_input.clear()
-        self.gender_input.setCurrentIndex(0)
-        self.phone_input.clear()
-        self.address_input.clear()
+        self.gender_combo.setCurrentIndex(0)
+        self.contact_input.clear()
+        self.medical_history_input.clear()
+        self.first_name_input.setStyleSheet("")
+        self.last_name_input.setStyleSheet("")
+        self.age_input.setStyleSheet("")
+        self.contact_input.setStyleSheet("")
