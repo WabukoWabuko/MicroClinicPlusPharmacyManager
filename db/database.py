@@ -10,11 +10,14 @@ class Database:
         """Initialize the database by creating tables if they don't exist."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            # Read and execute schema.sql
-            schema_path = Path("database/schema.sql")
-            with open(schema_path, "r") as f:
-                cursor.executescript(f.read())
-            conn.commit()
+            # Check if tables exist
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+            if not cursor.fetchone():
+                # Read and execute schema.sql only if tables don't exist
+                schema_path = Path("database/schema.sql")
+                with open(schema_path, "r") as f:
+                    cursor.executescript(f.read())
+                conn.commit()
 
     def add_patient(self, first_name, last_name, date_of_birth, gender, phone, address):
         """Add a patient to the patients table."""
