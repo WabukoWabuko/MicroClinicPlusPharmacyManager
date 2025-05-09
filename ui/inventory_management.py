@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWi
 from PyQt6.QtCore import Qt
 from db.database import Database
 from utils.validation import is_valid_name, is_valid_quantity, is_valid_date, is_valid_price
+import qtawesome as qta
 
 class InventoryManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -25,16 +26,26 @@ class InventoryManagementWidget(QWidget):
         self.inventory_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.inventory_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.inventory_table.selectionModel().selectionChanged.connect(self.load_selected_drug)
+        self.inventory_table.setToolTip("List of drugs in inventory")
         main_layout.addWidget(self.inventory_table)
 
         # Form for adding/editing drugs
         form_layout = QFormLayout()
         self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("Enter drug name")
+        self.name_input.setToolTip("Drug name")
         self.quantity_input = QLineEdit()
+        self.quantity_input.setPlaceholderText("Enter quantity")
+        self.quantity_input.setToolTip("Quantity in stock")
         self.batch_number_input = QLineEdit()
+        self.batch_number_input.setPlaceholderText("Enter batch number")
+        self.batch_number_input.setToolTip("Batch number")
         self.expiry_date_input = QLineEdit()
         self.expiry_date_input.setPlaceholderText("YYYY-MM-DD")
+        self.expiry_date_input.setToolTip("Expiry date (YYYY-MM-DD)")
         self.price_input = QLineEdit()
+        self.price_input.setPlaceholderText("Enter price")
+        self.price_input.setToolTip("Price per unit")
         form_layout.addRow("Name:", self.name_input)
         form_layout.addRow("Quantity:", self.quantity_input)
         form_layout.addRow("Batch Number:", self.batch_number_input)
@@ -45,9 +56,17 @@ class InventoryManagementWidget(QWidget):
         # Buttons
         button_layout = QHBoxLayout()
         self.add_button = QPushButton("Add Drug")
+        self.add_button.setIcon(qta.icon('mdi.add-circle'))
+        self.add_button.setToolTip("Add new drug")
         self.update_button = QPushButton("Update Drug")
+        self.update_button.setIcon(qta.icon('mdi.edit'))
+        self.update_button.setToolTip("Update selected drug")
         self.delete_button = QPushButton("Delete Drug")
+        self.delete_button.setIcon(qta.icon('mdi.delete'))
+        self.delete_button.setToolTip("Delete selected drug")
         self.back_button = QPushButton("Back")
+        self.back_button.setIcon(qta.icon('mdi.arrow-back'))
+        self.back_button.setToolTip("Return to menu")
         self.add_button.clicked.connect(self.add_drug)
         self.update_button.clicked.connect(self.update_drug)
         self.delete_button.clicked.connect(self.delete_drug)
@@ -58,7 +77,8 @@ class InventoryManagementWidget(QWidget):
         button_layout.addWidget(self.back_button)
         main_layout.addLayout(button_layout)
 
-        # Load inventory
+        main_layout.addStretch()
+
         self.load_inventory()
 
     def load_inventory(self):
@@ -105,14 +125,12 @@ class InventoryManagementWidget(QWidget):
         expiry_date = self.expiry_date_input.text().strip()
         price = self.price_input.text().strip()
 
-        # Reset styles
         self.name_input.setStyleSheet("")
         self.quantity_input.setStyleSheet("")
         self.batch_number_input.setStyleSheet("")
         self.expiry_date_input.setStyleSheet("")
         self.price_input.setStyleSheet("")
 
-        # Validate inputs
         is_valid, error = is_valid_name(name)
         if not is_valid:
             self.name_input.setStyleSheet("border: 1px solid red;")
@@ -164,14 +182,12 @@ class InventoryManagementWidget(QWidget):
         expiry_date = self.expiry_date_input.text().strip()
         price = self.price_input.text().strip()
 
-        # Reset styles
         self.name_input.setStyleSheet("")
         self.quantity_input.setStyleSheet("")
         self.batch_number_input.setStyleSheet("")
         self.expiry_date_input.setStyleSheet("")
         self.price_input.setStyleSheet("")
 
-        # Validate inputs
         is_valid, error = is_valid_name(name)
         if not is_valid:
             self.name_input.setStyleSheet("border: 1px solid red;")

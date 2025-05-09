@@ -1,8 +1,10 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
                              QComboBox, QPushButton, QTableWidget, QTableWidgetItem,
                              QHeaderView, QMessageBox)
+from PyQt6.QtCore import Qt
 from db.database import Database
 from utils.validation import is_valid_username, is_valid_password
+import qtawesome as qta
 
 class UserManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -22,10 +24,15 @@ class UserManagementWidget(QWidget):
         right_form = QVBoxLayout()
 
         self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText("Enter username")
+        self.username_input.setToolTip("User's username")
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password_input.setPlaceholderText("Enter password")
+        self.password_input.setToolTip("User's password (min 8 characters)")
         self.role_combo = QComboBox()
         self.role_combo.addItems(["admin", "staff"])
+        self.role_combo.setToolTip("Select user role")
 
         left_form.addWidget(QLabel("Username:"))
         left_form.addWidget(self.username_input)
@@ -41,9 +48,17 @@ class UserManagementWidget(QWidget):
         # Buttons
         button_layout = QHBoxLayout()
         add_button = QPushButton("Add User")
+        add_button.setIcon(qta.icon('mdi.account-plus'))
+        add_button.setToolTip("Add new user")
         update_button = QPushButton("Update User")
+        update_button.setIcon(qta.icon('mdi.edit'))
+        update_button.setToolTip("Update selected user")
         delete_button = QPushButton("Delete User")
+        delete_button.setIcon(qta.icon('mdi.delete'))
+        delete_button.setToolTip("Delete selected user")
         back_button = QPushButton("Back")
+        back_button.setIcon(qta.icon('mdi.arrow-back'))
+        back_button.setToolTip("Return to menu")
         add_button.clicked.connect(self.add_user)
         update_button.clicked.connect(self.update_user)
         delete_button.clicked.connect(self.delete_user)
@@ -60,7 +75,10 @@ class UserManagementWidget(QWidget):
         self.user_table.setHorizontalHeaderLabels(["ID", "Username", "Role"])
         self.user_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.user_table.selectionModel().selectionChanged.connect(self.load_selected_user)
+        self.user_table.setToolTip("List of users")
         main_layout.addWidget(self.user_table)
+
+        main_layout.addStretch()
 
         self.load_users()
 
@@ -86,11 +104,9 @@ class UserManagementWidget(QWidget):
         password = self.password_input.text().strip()
         role = self.role_combo.currentText()
 
-        # Reset styles
         self.username_input.setStyleSheet("")
         self.password_input.setStyleSheet("")
 
-        # Validate inputs
         is_valid, error = is_valid_username(username)
         if not is_valid:
             self.username_input.setStyleSheet("border: 1px solid red;")
@@ -120,18 +136,16 @@ class UserManagementWidget(QWidget):
         password = self.password_input.text().strip()
         role = self.role_combo.currentText()
 
-        # Reset styles
         self.username_input.setStyleSheet("")
         self.password_input.setStyleSheet("")
 
-        # Validate inputs
         is_valid, error = is_valid_username(username)
         if not is_valid:
             self.username_input.setStyleSheet("border: 1px solid red;")
             QMessageBox.warning(self, "Error", error)
             return
 
-        if password:  # Password is optional for update
+        if password:
             is_valid, error = is_valid_password(password)
             if not is_valid:
                 self.password_input.setStyleSheet("border: 1px solid red;")

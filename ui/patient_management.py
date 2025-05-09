@@ -1,8 +1,10 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
                              QComboBox, QTextEdit, QPushButton, QTableWidget,
                              QTableWidgetItem, QHeaderView, QMessageBox)
+from PyQt6.QtCore import Qt
 from db.database import Database
 from utils.validation import is_valid_name, is_valid_phone
+import qtawesome as qta
 
 class PatientManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -21,12 +23,23 @@ class PatientManagementWidget(QWidget):
         right_form = QVBoxLayout()
 
         self.first_name_input = QLineEdit()
+        self.first_name_input.setPlaceholderText("Enter first name")
+        self.first_name_input.setToolTip("Patient's first name")
         self.last_name_input = QLineEdit()
+        self.last_name_input.setPlaceholderText("Enter last name")
+        self.last_name_input.setToolTip("Patient's last name")
         self.age_input = QLineEdit()
+        self.age_input.setPlaceholderText("Enter age")
+        self.age_input.setToolTip("Patient's age (1-150)")
         self.gender_combo = QComboBox()
         self.gender_combo.addItems(["Male", "Female", "Other"])
+        self.gender_combo.setToolTip("Select gender")
         self.contact_input = QLineEdit()
+        self.contact_input.setPlaceholderText("e.g., +254700123456")
+        self.contact_input.setToolTip("Patient's contact number")
         self.medical_history_input = QTextEdit()
+        self.medical_history_input.setPlaceholderText("Enter medical history")
+        self.medical_history_input.setToolTip("Patient's medical history")
 
         left_form.addWidget(QLabel("First Name:"))
         left_form.addWidget(self.first_name_input)
@@ -48,8 +61,14 @@ class PatientManagementWidget(QWidget):
         # Buttons
         button_layout = QHBoxLayout()
         add_button = QPushButton("Add Patient")
+        add_button.setIcon(qta.icon('mdi.account-plus'))
+        add_button.setToolTip("Add new patient")
         clear_button = QPushButton("Clear")
+        clear_button.setIcon(qta.icon('mdi.close'))
+        clear_button.setToolTip("Clear form")
         back_button = QPushButton("Back")
+        back_button.setIcon(qta.icon('mdi.arrow-back'))
+        back_button.setToolTip("Return to menu")
         add_button.clicked.connect(self.add_patient)
         clear_button.clicked.connect(self.clear_form)
         back_button.clicked.connect(self.main_window.show_menu)
@@ -63,7 +82,10 @@ class PatientManagementWidget(QWidget):
         self.patient_table.setColumnCount(6)
         self.patient_table.setHorizontalHeaderLabels(["ID", "First Name", "Last Name", "Age", "Gender", "Contact"])
         self.patient_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.patient_table.setToolTip("List of registered patients")
         main_layout.addWidget(self.patient_table)
+
+        main_layout.addStretch()
 
         self.load_patients()
 
@@ -74,7 +96,7 @@ class PatientManagementWidget(QWidget):
             self.patient_table.setItem(row, 0, QTableWidgetItem(str(patient['patient_id'])))
             self.patient_table.setItem(row, 1, QTableWidgetItem(patient['first_name']))
             self.patient_table.setItem(row, 2, QTableWidgetItem(patient['last_name']))
-            self.patient_table.setItem(row, 3, QTableWidgetItem(str(patient['age_val'])))
+            self.patient_table.setItem(row, 3, QTableWidgetItem(str(patient['age'])))
             self.patient_table.setItem(row, 4, QTableWidgetItem(patient['gender']))
             self.patient_table.setItem(row, 5, QTableWidgetItem(patient['contact']))
 
@@ -86,13 +108,11 @@ class PatientManagementWidget(QWidget):
         contact = self.contact_input.text().strip()
         medical_history = self.medical_history_input.toPlainText().strip()
 
-        # Reset styles
         self.first_name_input.setStyleSheet("")
         self.last_name_input.setStyleSheet("")
         self.age_input.setStyleSheet("")
         self.contact_input.setStyleSheet("")
 
-        # Validate inputs
         is_valid, error = is_valid_name(first_name)
         if not is_valid:
             self.first_name_input.setStyleSheet("border: 1px solid red;")

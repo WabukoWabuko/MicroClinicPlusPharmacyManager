@@ -42,6 +42,8 @@ pytest==8.3.5
 pytest-mock==3.14.0
 python-dateutil==2.9.0.post0
 pytz==2025.2
+QtAwesome==1.4.0
+QtPy==2.4.3
 realtime==2.4.3
 reportlab==4.4.0
 six==1.17.0

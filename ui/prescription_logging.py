@@ -1,8 +1,10 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
                              QLineEdit, QTextEdit, QPushButton, QTableWidget,
                              QTableWidgetItem, QHeaderView, QMessageBox)
+from PyQt6.QtCore import Qt
 from db.database import Database
 from utils.validation import is_valid_quantity, is_valid_name
+import qtawesome as qta
 
 class PrescriptionLoggingWidget(QWidget):
     def __init__(self, main_window):
@@ -21,13 +23,27 @@ class PrescriptionLoggingWidget(QWidget):
         right_form = QVBoxLayout()
 
         self.patient_combo = QComboBox()
+        self.patient_combo.setToolTip("Select patient")
         self.diagnosis_input = QLineEdit()
+        self.diagnosis_input.setPlaceholderText("Enter diagnosis")
+        self.diagnosis_input.setToolTip("Enter diagnosis")
         self.notes_input = QTextEdit()
+        self.notes_input.setPlaceholderText("Enter notes")
+        self.notes_input.setToolTip("Additional notes")
         self.drug_combo = QComboBox()
+        self.drug_combo.setToolTip("Select drug")
         self.dosage_input = QLineEdit()
+        self.dosage_input.setPlaceholderText("Enter dosage")
+        self.dosage_input.setToolTip("Dosage instructions")
         self.frequency_input = QLineEdit()
+        self.frequency_input.setPlaceholderText("Enter frequency")
+        self.frequency_input.setToolTip("e.g., Twice daily")
         self.duration_input = QLineEdit()
+        self.duration_input.setPlaceholderText("Enter duration")
+        self.duration_input.setToolTip("e.g., 7 days")
         self.quantity_input = QLineEdit()
+        self.quantity_input.setPlaceholderText("Enter quantity")
+        self.quantity_input.setToolTip("Number of units")
 
         left_form.addWidget(QLabel("Patient:"))
         left_form.addWidget(self.patient_combo)
@@ -53,8 +69,14 @@ class PrescriptionLoggingWidget(QWidget):
         # Buttons
         button_layout = QHBoxLayout()
         add_button = QPushButton("Add Prescription")
+        add_button.setIcon(qta.icon('mdi.prescription'))
+        add_button.setToolTip("Add new prescription")
         clear_button = QPushButton("Clear")
+        clear_button.setIcon(qta.icon('mdi.clear'))
+        clear_button.setToolTip("Clear form")
         back_button = QPushButton("Back")
+        back_button.setIcon(qta.icon('mdi.arrow-back'))
+        back_button.setToolTip("Return to menu")
         add_button.clicked.connect(self.add_prescription)
         clear_button.clicked.connect(self.clear_form)
         back_button.clicked.connect(self.main_window.show_menu)
@@ -68,7 +90,10 @@ class PrescriptionLoggingWidget(QWidget):
         self.prescription_table.setColumnCount(5)
         self.prescription_table.setHorizontalHeaderLabels(["ID", "Patient", "Drug", "Date", "Quantity"])
         self.prescription_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.prescription_table.setToolTip("List of prescriptions")
         main_layout.addWidget(self.prescription_table)
+
+        main_layout.addStretch()
 
         self.load_patients()
         self.load_drugs()
@@ -108,14 +133,12 @@ class PrescriptionLoggingWidget(QWidget):
         duration = self.duration_input.text().strip()
         quantity = self.quantity_input.text().strip()
 
-        # Reset styles
         self.diagnosis_input.setStyleSheet("")
         self.dosage_input.setStyleSheet("")
         self.frequency_input.setStyleSheet("")
         self.duration_input.setStyleSheet("")
         self.quantity_input.setStyleSheet("")
 
-        # Validate inputs
         if not patient_id:
             QMessageBox.warning(self, "Error", "Please select a patient.")
             return

@@ -25,3 +25,13 @@ assets/*.png
 !assets/logo.png
 
 utils/__pycache__/
+
+assets/icons/*.png
+!assets/icons/add_circle.png
+!assets/icons/clear.png
+!assets/icons/arrow_back.png
+!assets/icons/save.png
+!assets/icons/delete.png
+!assets/icons/edit.png
+!assets/icons/login.png
+!assets/icons/assessment.png

@@ -9,6 +9,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 import os
 from utils.validation import is_valid_quantity
+import qtawesome as qta
 
 class SalesManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -27,6 +28,7 @@ class SalesManagementWidget(QWidget):
         patient_label = QLabel("Select Patient:")
         self.patient_combo = QComboBox()
         self.patient_combo.addItem("Select Patient", None)
+        self.patient_combo.setToolTip("Select patient for sale")
         patient_layout.addWidget(patient_label)
         patient_layout.addWidget(self.patient_combo)
         main_layout.addLayout(patient_layout)
@@ -35,12 +37,18 @@ class SalesManagementWidget(QWidget):
         drug_layout = QHBoxLayout()
         drug_label = QLabel("Drug:")
         self.drug_combo = QComboBox()
+        self.drug_combo.setToolTip("Select drug to sell")
         quantity_label = QLabel("Quantity:")
         self.quantity_input = QLineEdit()
+        self.quantity_input.setPlaceholderText("Enter quantity")
+        self.quantity_input.setToolTip("Quantity to sell")
         price_label = QLabel("Price:")
         self.price_input = QLineEdit()
         self.price_input.setReadOnly(True)
+        self.price_input.setToolTip("Price per unit")
         add_item_button = QPushButton("Add Item")
+        add_item_button.setIcon(qta.icon('mdi.add-circle'))
+        add_item_button.setToolTip("Add drug to sale")
         add_item_button.clicked.connect(self.add_sale_item)
         drug_layout.addWidget(drug_label)
         drug_layout.addWidget(self.drug_combo)
@@ -56,13 +64,20 @@ class SalesManagementWidget(QWidget):
         self.sale_items_table.setColumnCount(4)
         self.sale_items_table.setHorizontalHeaderLabels(["Drug Name", "Quantity", "Price", "Subtotal"])
         self.sale_items_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.sale_items_table.setToolTip("Items in current sale")
         main_layout.addWidget(self.sale_items_table)
 
         # Buttons
         button_layout = QHBoxLayout()
         submit_sale_button = QPushButton("Submit Sale")
+        submit_sale_button.setIcon(qta.icon('mdi.save'))
+        submit_sale_button.setToolTip("Complete sale and generate receipt")
         clear_button = QPushButton("Clear")
+        clear_button.setIcon(qta.icon('mdi.clear'))
+        clear_button.setToolTip("Clear sale form")
         back_button = QPushButton("Back")
+        back_button.setIcon(qta.icon('mdi.arrow-back'))
+        back_button.setToolTip("Return to menu")
         submit_sale_button.clicked.connect(self.add_sale)
         clear_button.clicked.connect(self.clear_sale)
         back_button.clicked.connect(self.main_window.show_menu)
@@ -71,7 +86,8 @@ class SalesManagementWidget(QWidget):
         button_layout.addWidget(back_button)
         main_layout.addLayout(button_layout)
 
-        # Load data
+        main_layout.addStretch()
+
         self.load_patients()
         self.load_drugs()
 
@@ -103,10 +119,8 @@ class SalesManagementWidget(QWidget):
         drug_data = self.drug_combo.currentData()
         quantity = self.quantity_input.text().strip()
 
-        # Reset styles
         self.quantity_input.setStyleSheet("")
 
-        # Validate inputs
         if not drug_data:
             QMessageBox.warning(self, "Error", "Please select a drug.")
             return
