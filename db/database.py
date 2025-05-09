@@ -125,3 +125,74 @@ class Database:
             expiry_threshold = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
             cursor.execute("SELECT * FROM inventory WHERE expiry_date <= ?", (expiry_threshold,))
             return cursor.fetchall()
+
+    def add_sale(self, patient_id, user_id, total_price, items):
+        """Add a sale and its items, updating inventory quantities."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # Start transaction
+            try:
+                # Insert into sales table
+                cursor.execute("""
+                    INSERT INTO sales (patient_id, user_id, total_price)
+                    VALUES (?, ?, ?)
+                """, (patient_id, user_id, total_price))
+                sale_id = cursor.lastrowid
+
+                # Insert sale items and update inventory
+                for item in items:
+                    drug_id = item['drug_id']
+                    quantity_sold = item['quantity']
+                    unit_price = item['price']
+
+                    # Verify sufficient stock
+                    cursor.execute("SELECT quantity FROM inventory WHERE drug_id = ?", (drug_id,))
+                    current_quantity = cursor.fetchone()[0]
+                    if current_quantity < quantity_sold:
+                        raise ValueError(f"Insufficient stock for drug ID {drug_id}")
+
+                    # Insert into sale_items
+                    cursor.execute("""
+                        INSERT INTO sale_items (sale_id, drug_id, quantity_sold, unit_price)
+                        VALUES (?, ?, ?, ?)
+                    """, (sale_id, drug_id, quantity_sold, unit_price))
+
+                    # Update inventory quantity
+                    cursor.execute("""
+                        UPDATE inventory
+                        SET quantity = quantity - ?
+                        WHERE drug_id = ?
+                    """, (quantity_sold, drug_id))
+
+                conn.commit()
+                return sale_id
+            except Exception as e:
+                conn.rollback()
+                raise e
+
+    def get_sale_details(self, sale_id):
+        """Retrieve details of a sale, including items."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            # Get sale info
+            cursor.execute("""
+                SELECT s.sale_id, s.sale_date, s.total_price, s.patient_id,
+                       p.first_name, p.last_name
+                FROM sales s
+                JOIN patients p ON s.patient_id = p.patient_id
+                WHERE s.sale_id = ?
+            """, (sale_id,))
+            sale = cursor.fetchone()
+
+            # Get sale items
+            cursor.execute("""
+                SELECT si.sale_item_id, si.quantity_sold, si.unit_price,
+                       i.drug_id, i.name
+                FROM sale_items si
+                JOIN inventory i ON si.drug_id = i.drug_id
+                WHERE si.sale_id = ?
+            """, (sale_id,))
+            items = cursor.fetchall()
+
+            return {'sale': sale, 'items': items}

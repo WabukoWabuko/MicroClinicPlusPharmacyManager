@@ -49,3 +49,25 @@ CREATE TABLE prescription_items (
     FOREIGN KEY (prescription_id) REFERENCES prescriptions(prescription_id),
     FOREIGN KEY (drug_id) REFERENCES inventory(drug_id)
 );
+
+-- Creating sales table
+CREATE TABLE sales (
+    sale_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    sale_date TEXT NOT NULL DEFAULT (date('now')),
+    total_price REAL NOT NULL,
+    FOREIGN KEY (patient_id) REFERENCES patients(patient_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- Creating sale_items table
+CREATE TABLE sale_items (
+    sale_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sale_id INTEGER NOT NULL,
+    drug_id INTEGER NOT NULL,
+    quantity_sold INTEGER NOT NULL,
+    unit_price REAL NOT NULL,
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
+    FOREIGN KEY (drug_id) REFERENCES inventory(drug_id)
+);
