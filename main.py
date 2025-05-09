@@ -48,12 +48,16 @@ class MainWindow(QMainWindow):
     def setup_menu(self):
         """Set up the menu based on the user's role."""
         # Clear existing menu layout
-        if self.menu_widget.layout():
-            while self.menu_widget.layout().count():
-                item = self.menu_widget.layout().takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
+        old_layout = self.menu_widget.layout()
+        if old_layout:
+            while old_layout.count():
+                item = old_layout.takeAt(0)
+                widget = item.widget()
+                if widget:
+                    widget.deleteLater()
+            self.menu_widget.setLayout(None)
 
+        # Create new layout
         menu_layout = QVBoxLayout()
         self.menu_widget.setLayout(menu_layout)
 
