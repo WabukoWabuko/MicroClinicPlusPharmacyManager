@@ -38,15 +38,12 @@ class PatientManagementWidget(QWidget):
         button_layout = QHBoxLayout()
         save_button = QPushButton("Save")
         clear_button = QPushButton("Clear")
-        view_button = QPushButton("View All")
         back_button = QPushButton("Back")
         save_button.clicked.connect(self.save_patient)
         clear_button.clicked.connect(self.clear_form)
-        view_button.clicked.connect(self.view_patients)
         back_button.clicked.connect(self.main_window.show_menu)
         button_layout.addWidget(save_button)
         button_layout.addWidget(clear_button)
-        button_layout.addWidget(view_button)
         button_layout.addWidget(back_button)
 
         # Table for viewing patients
@@ -62,8 +59,25 @@ class PatientManagementWidget(QWidget):
         main_layout.addLayout(button_layout)
         main_layout.addWidget(self.table)
 
+        # Populate table initially
+        self.populate_table()
+
+    def populate_table(self):
+        """Display all patients in the table."""
+        patients = self.db.get_all_patients()
+        self.table.setRowCount(len(patients))
+
+        for row, patient in enumerate(patients):
+            self.table.setItem(row, 0, QTableWidgetItem(str(patient['patient_id'])))
+            self.table.setItem(row, 1, QTableWidgetItem(patient['first_name']))
+            self.table.setItem(row, 2, QTableWidgetItem(patient['last_name']))
+            self.table.setItem(row, 3, QTableWidgetItem(patient['date_of_birth']))
+            self.table.setItem(row, 4, QTableWidgetItem(patient['gender']))
+            self.table.setItem(row, 5, QTableWidgetItem(patient['phone'] or ""))
+            self.table.setItem(row, 6, QTableWidgetItem(patient['address'] or ""))
+
     def save_patient(self):
-        """Save patient data to the database."""
+        """Save patient data to the database and refresh table."""
         first_name = self.first_name_input.text().strip()
         last_name = self.last_name_input.text().strip()
         age = self.age_input.text().strip()
@@ -92,6 +106,7 @@ class PatientManagementWidget(QWidget):
         self.db.add_patient(first_name, last_name, date_of_birth, gender, phone, medical_history)
         QMessageBox.information(self, "Success", "Patient saved successfully.")
         self.clear_form()
+        self.populate_table()  # Refresh table automatically
 
     def clear_form(self):
         """Clear all input fields."""
@@ -101,17 +116,3 @@ class PatientManagementWidget(QWidget):
         self.gender_input.setCurrentIndex(0)
         self.phone_input.clear()
         self.address_input.clear()
-
-    def view_patients(self):
-        """Display all patients in the table."""
-        patients = self.db.get_all_patients()
-        self.table.setRowCount(len(patients))
-
-        for row, patient in enumerate(patients):
-            self.table.setItem(row, 0, QTableWidgetItem(str(patient['patient_id'])))
-            self.table.setItem(row, 1, QTableWidgetItem(patient['first_name']))
-            self.table.setItem(row, 2, QTableWidgetItem(patient['last_name']))
-            self.table.setItem(row, 3, QTableWidgetItem(patient['date_of_birth']))
-            self.table.setItem(row, 4, QTableWidgetItem(patient['gender']))
-            self.table.setItem(row, 5, QTableWidgetItem(patient['phone'] or ""))
-            self.table.setItem(row, 6, QTableWidgetItem(patient['address'] or ""))

@@ -15,10 +15,18 @@ class PrescriptionLoggingWidget(QWidget):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
+        # Patient search and selection
+        search_layout = QHBoxLayout()
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search by patient name...")
+        self.search_input.textChanged.connect(self.search_patients)
+        self.patient_combo = QComboBox()
+        search_layout.addWidget(self.search_input)
+        search_layout.addWidget(self.patient_combo)
+
         # Form layout for prescription details
         form_layout = QFormLayout()
-        self.patient_combo = QComboBox()
-        self.populate_patients()
+        form_layout.addRow("Patient:", search_layout)
         self.drug_name_input = QLineEdit()
         self.dosage_input = QLineEdit()
         self.frequency_input = QLineEdit()
@@ -27,11 +35,10 @@ class PrescriptionLoggingWidget(QWidget):
         self.notes_input.setMaximumHeight(50)
         self.diagnosis_input = QLineEdit()
 
-        form_layout.addRow("Patient:", self.patient_combo)
         form_layout.addRow("Drug Name:", self.drug_name_input)
         form_layout.addRow("Dosage:", self.dosage_input)
         form_layout.addRow("Frequency:", self.frequency_input)
-        form_layout.addRow("Duration:", self.duration_input)
+        form_layout.addRow("Duration:", self.dosage_input)
         form_layout.addRow("Diagnosis:", self.diagnosis_input)
         form_layout.addRow("Notes:", self.notes_input)
 
@@ -63,15 +70,28 @@ class PrescriptionLoggingWidget(QWidget):
         main_layout.addLayout(button_layout)
         main_layout.addWidget(self.table)
 
-    def populate_patients(self):
-        """Populate patient dropdown with all patients."""
+        # Populate patient dropdown
+        self.populate_patients()
+
+    def populate_patients(self, patients=None):
+        """Populate patient dropdown with patients, optionally filtered."""
         self.patient_combo.clear()
-        patients = self.db.get_all_patients()
+        if patients is None:
+            patients = self.db.get_all_patients()
         for patient in patients:
             self.patient_combo.addItem(
                 f"{patient['first_name']} {patient['last_name']}",
                 patient['patient_id']
             )
+
+    def search_patients(self):
+        """Filter patients in dropdown based on search term."""
+        search_term = self.search_input.text().strip()
+        if search_term:
+            patients = self.db.search_patients(search_term)
+        else:
+            patients = self.db.get_all_patients()
+        self.populate_patients(patients)
 
     def save_prescription(self):
         """Save prescription to the database."""
@@ -104,13 +124,15 @@ class PrescriptionLoggingWidget(QWidget):
 
     def clear_form(self):
         """Clear all input fields."""
+        self.search_input.clear()  # Clear search
+        self.populate_patients()  # Reset dropdown
         self.drug_name_input.clear()
         self.dosage_input.clear()
         self.frequency_input.clear()
         self.duration_input.clear()
         self.diagnosis_input.clear()
         self.notes_input.clear()
-        self.table.setRowCount(0)  # Clear table as well
+        self.table.setRowCount(0)  # Clear table
 
     def view_prescriptions(self):
         """Display prescription history for the selected patient."""

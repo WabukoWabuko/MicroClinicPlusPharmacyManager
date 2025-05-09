@@ -38,6 +38,17 @@ class Database:
             cursor.execute("SELECT * FROM patients")
             return cursor.fetchall()
 
+    def search_patients(self, search_term):
+        """Search patients by first name or last name."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM patients
+                WHERE first_name LIKE ? OR last_name LIKE ?
+            """, (f"%{search_term}%", f"%{search_term}%"))
+            return cursor.fetchall()
+
     def add_prescription(self, patient_id, user_id, diagnosis, notes, drug_name, dosage, frequency, duration):
         """Add a prescription and its item to the prescriptions and prescription_items tables."""
         with sqlite3.connect(self.db_path) as conn:
