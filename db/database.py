@@ -12,10 +12,8 @@ class Database:
         """Initialize the database by creating tables if they don't exist."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            # Check if tables exist
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
             if not cursor.fetchone():
-                # Read and execute schema.sql only if tables don't exist
                 schema_path = Path("database/schema.sql")
                 with open(schema_path, "r") as f:
                     cursor.executescript(f.read())
@@ -25,7 +23,6 @@ class Database:
         """Add a user with a hashed password to the users table."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            # Hash the password
             password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             try:
                 cursor.execute("""
@@ -71,37 +68,6 @@ class Database:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT * FROM users WHERE username = ?
-            """, (username,))
-            user = cursor.fetchone()
-            if user and bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
-                return user
-            return None
-
-    def add_patient(self, first_name, last_name, date_of_birth, gender, phone, address):
-        """Add a patient to the patients table."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO patients (first_name, last_name, date_of_birth, gender, phone, address)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (first_name, last_name, date_of_birth, gender, phone, address))
-            conn.commit()
-
-    def get_all_patients(self):
-        """Retrieve all patients from the patients table."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM patients")
-            return cursor.fetchall()
-
-    def search_patients(self, search_term):
-        """Search patients by first name or last name."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("""
                 SELECT * FROM patients
                 WHERE first_name LIKE ? OR last_name LIKE ?
             """, (f"%{search_term}%", f"%{search_term}%"))
@@ -112,26 +78,22 @@ class Database:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             try:
-                # Verify sufficient stock
                 cursor.execute("SELECT quantity FROM inventory WHERE drug_id = ?", (drug_id,))
                 current_quantity = cursor.fetchone()
                 if not current_quantity or current_quantity[0] < quantity_prescribed:
                     raise ValueError(f"Insufficient stock for drug ID {drug_id}")
 
-                # Insert into prescriptions table
                 cursor.execute("""
                     INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes)
                     VALUES (?, ?, ?, ?)
                 """, (patient_id, user_id, diagnosis, notes))
                 prescription_id = cursor.lastrowid
 
-                # Insert into prescription_items table
                 cursor.execute("""
                     INSERT INTO prescription_items (prescription_id, drug_id, dosage_instructions, quantity_prescribed)
                     VALUES (?, ?, ?, ?)
                 """, (prescription_id, drug_id, f"{dosage}, {frequency}, for {duration}", quantity_prescribed))
 
-                # Update inventory quantity
                 cursor.execute("""
                     UPDATE inventory
                     SET quantity = quantity - ?
@@ -208,34 +170,28 @@ class Database:
         """Add a sale and its items, updating inventory quantities."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            # Start transaction
             try:
-                # Insert into sales table
                 cursor.execute("""
                     INSERT INTO sales (patient_id, user_id, total_price)
                     VALUES (?, ?, ?)
                 """, (patient_id, user_id, total_price))
                 sale_id = cursor.lastrowid
 
-                # Insert sale items and update inventory
                 for item in items:
                     drug_id = item['drug_id']
                     quantity_sold = item['quantity']
                     unit_price = item['price']
 
-                    # Verify sufficient stock
                     cursor.execute("SELECT quantity FROM inventory WHERE drug_id = ?", (drug_id,))
                     current_quantity = cursor.fetchone()[0]
                     if current_quantity < quantity_sold:
                         raise ValueError(f"Insufficient stock for drug ID {drug_id}")
 
-                    # Insert into sale_items
                     cursor.execute("""
                         INSERT INTO sale_items (sale_id, drug_id, quantity_sold, unit_price)
                         VALUES (?, ?, ?, ?)
                     """, (sale_id, drug_id, quantity_sold, unit_price))
 
-                    # Update inventory quantity
                     cursor.execute("""
                         UPDATE inventory
                         SET quantity = quantity - ?
@@ -253,7 +209,6 @@ class Database:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            # Get sale info
             cursor.execute("""
                 SELECT s.sale_id, s.sale_date, s.total_price, s.patient_id,
                        p.first_name, p.last_name
@@ -263,7 +218,6 @@ class Database:
             """, (sale_id,))
             sale = cursor.fetchone()
 
-            # Get sale items
             cursor.execute("""
                 SELECT si.sale_item_id, si.quantity_sold, si.unit_price,
                        i.drug_id, i.name
@@ -274,3 +228,53 @@ class Database:
             items = cursor.fetchall()
 
             return {'sale': sale, 'items': items}
+
+    def get_sales_summary(self):
+        """Get total sales value and count."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) as sale_count, SUM(total_price) as total_value
+                FROM sales
+            """)
+            return cursor.fetchone()
+
+    def get_prescriptions_by_user(self):
+        """Get prescription count by user."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT u.username, COUNT(p.prescription_id) as prescription_count
+                FROM prescriptions p
+                JOIN users u ON p.user_id = u.user_id
+                GROUP BY u.user_id, u.username
+            """)
+            return cursor.fetchall()
+
+    def get_low_stock_drugs(self):
+        """Get drugs with quantity <= 10."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT drug_id, name, quantity, batch_number, expiry_date, price
+                FROM inventory
+                WHERE quantity <= 10
+            """)
+            return cursor.fetchall()
+
+    def get_sales_for_chart(self):
+        """Get daily sales totals for the last 30 days."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT sale_date, SUM(total_price) as daily_total
+                FROM sales
+                WHERE sale_date >= date('now', '-30 days')
+                GROUP BY sale_date
+                ORDER BY sale_date
+            """)
+            return cursor.fetchall()
