@@ -57,7 +57,7 @@ class PrescriptionLoggingWindow(QMainWindow):
         self.table.setHorizontalHeaderLabels([
             "Prescription ID", "Date", "Diagnosis", "Notes", "Dosage Instructions"
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         # Add to main layout
         main_layout.addLayout(form_layout)

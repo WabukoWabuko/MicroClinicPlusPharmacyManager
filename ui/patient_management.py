@@ -56,7 +56,7 @@ class PatientManagementWindow(QMainWindow):
         self.table.setHorizontalHeaderLabels([
             "ID", "First Name", "Last Name", "DOB", "Gender", "Phone", "Medical History"
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         # Add to main layout
         main_layout.addLayout(form_layout)
