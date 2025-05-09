@@ -1,3 +1,4 @@
+import sqlite3
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget,
                              QTableWidgetItem, QHeaderView, QLineEdit, QPushButton,
                              QTabWidget)
