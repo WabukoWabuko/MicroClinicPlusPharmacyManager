@@ -1,10 +1,13 @@
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-                             QComboBox, QTextEdit, QPushButton, QTableWidget,
-                             QTableWidgetItem, QHeaderView, QMessageBox)
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+    QComboBox, QTextEdit, QPushButton, QTableWidget,
+    QTableWidgetItem, QHeaderView, QMessageBox
+)
 from PyQt6.QtCore import Qt
 from db.database import Database
 from utils.validation import is_valid_name, is_valid_phone
 import qtawesome as qta
+
 
 class PatientManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -17,7 +20,7 @@ class PatientManagementWidget(QWidget):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
-        # Form for adding patients
+        # --- Form Layout ---
         form_layout = QHBoxLayout()
         left_form = QVBoxLayout()
         right_form = QVBoxLayout()
@@ -25,28 +28,35 @@ class PatientManagementWidget(QWidget):
         self.first_name_input = QLineEdit()
         self.first_name_input.setPlaceholderText("Enter first name")
         self.first_name_input.setToolTip("Patient's first name")
+
         self.last_name_input = QLineEdit()
         self.last_name_input.setPlaceholderText("Enter last name")
         self.last_name_input.setToolTip("Patient's last name")
+
         self.age_input = QLineEdit()
         self.age_input.setPlaceholderText("Enter age")
         self.age_input.setToolTip("Patient's age (1-150)")
+
         self.gender_combo = QComboBox()
         self.gender_combo.addItems(["Male", "Female", "Other"])
         self.gender_combo.setToolTip("Select gender")
+
         self.contact_input = QLineEdit()
         self.contact_input.setPlaceholderText("e.g., +254700123456")
         self.contact_input.setToolTip("Patient's contact number")
+
         self.medical_history_input = QTextEdit()
         self.medical_history_input.setPlaceholderText("Enter medical history")
         self.medical_history_input.setToolTip("Patient's medical history")
 
+        # Add widgets to form
         left_form.addWidget(QLabel("First Name:"))
         left_form.addWidget(self.first_name_input)
         left_form.addWidget(QLabel("Last Name:"))
         left_form.addWidget(self.last_name_input)
         left_form.addWidget(QLabel("Age:"))
         left_form.addWidget(self.age_input)
+
         right_form.addWidget(QLabel("Gender:"))
         right_form.addWidget(self.gender_combo)
         right_form.addWidget(QLabel("Contact:"))
@@ -58,26 +68,30 @@ class PatientManagementWidget(QWidget):
         form_layout.addLayout(right_form)
         main_layout.addLayout(form_layout)
 
-        # Buttons
+        # --- Buttons ---
         button_layout = QHBoxLayout()
         add_button = QPushButton("Add Patient")
         add_button.setIcon(qta.icon('mdi.account-plus'))
         add_button.setToolTip("Add new patient")
+
         clear_button = QPushButton("Clear")
         clear_button.setIcon(qta.icon('mdi.close'))
         clear_button.setToolTip("Clear form")
+
         back_button = QPushButton("Back")
-        back_button.setIcon(qta.icon('mdi.arrow-back'))
+        back_button.setIcon(qta.icon('mdi.arrow-left'))
         back_button.setToolTip("Return to menu")
+
         add_button.clicked.connect(self.add_patient)
         clear_button.clicked.connect(self.clear_form)
         back_button.clicked.connect(self.main_window.show_menu)
+
         button_layout.addWidget(add_button)
         button_layout.addWidget(clear_button)
         button_layout.addWidget(back_button)
         main_layout.addLayout(button_layout)
 
-        # Patient table
+        # --- Table ---
         self.patient_table = QTableWidget()
         self.patient_table.setColumnCount(6)
         self.patient_table.setHorizontalHeaderLabels(["ID", "First Name", "Last Name", "Age", "Gender", "Contact"])
@@ -90,15 +104,18 @@ class PatientManagementWidget(QWidget):
         self.load_patients()
 
     def load_patients(self):
-        patients = self.db.get_all_patients()
-        self.patient_table.setRowCount(len(patients))
-        for row, patient in enumerate(patients):
-            self.patient_table.setItem(row, 0, QTableWidgetItem(str(patient['patient_id'])))
-            self.patient_table.setItem(row, 1, QTableWidgetItem(patient['first_name']))
-            self.patient_table.setItem(row, 2, QTableWidgetItem(patient['last_name']))
-            self.patient_table.setItem(row, 3, QTableWidgetItem(str(patient['age'])))
-            self.patient_table.setItem(row, 4, QTableWidgetItem(patient['gender']))
-            self.patient_table.setItem(row, 5, QTableWidgetItem(patient['contact']))
+        try:
+            patients = self.db.get_all_patients()
+            self.patient_table.setRowCount(len(patients))
+            for row, patient in enumerate(patients):
+                self.patient_table.setItem(row, 0, QTableWidgetItem(str(patient['patient_id'])))
+                self.patient_table.setItem(row, 1, QTableWidgetItem(patient['first_name']))
+                self.patient_table.setItem(row, 2, QTableWidgetItem(patient['last_name']))
+                self.patient_table.setItem(row, 3, QTableWidgetItem(str(patient['age'])))
+                self.patient_table.setItem(row, 4, QTableWidgetItem(patient['gender']))
+                self.patient_table.setItem(row, 5, QTableWidgetItem(patient['contact']))
+        except Exception as e:
+            QMessageBox.critical(self, "Database Error", f"Failed to load patients: {e}")
 
     def add_patient(self):
         first_name = self.first_name_input.text().strip()
@@ -108,11 +125,13 @@ class PatientManagementWidget(QWidget):
         contact = self.contact_input.text().strip()
         medical_history = self.medical_history_input.toPlainText().strip()
 
+        # Reset styles
         self.first_name_input.setStyleSheet("")
         self.last_name_input.setStyleSheet("")
         self.age_input.setStyleSheet("")
         self.contact_input.setStyleSheet("")
 
+        # Validate fields
         is_valid, error = is_valid_name(first_name)
         if not is_valid:
             self.first_name_input.setStyleSheet("border: 1px solid red;")
@@ -146,10 +165,13 @@ class PatientManagementWidget(QWidget):
             QMessageBox.warning(self, "Error", error)
             return
 
-        self.db.add_patient(first_name, last_name, age_val, gender, contact, medical_history)
-        QMessageBox.information(self, "Success", "Patient added successfully.")
-        self.load_patients()
-        self.clear_form()
+        try:
+            self.db.add_patient(first_name, last_name, age_val, gender, contact, medical_history)
+            QMessageBox.information(self, "Success", "Patient added successfully.")
+            self.load_patients()
+            self.clear_form()
+        except Exception as e:
+            QMessageBox.critical(self, "Database Error", f"Failed to add patient: {e}")
 
     def clear_form(self):
         self.first_name_input.clear()
@@ -162,3 +184,4 @@ class PatientManagementWidget(QWidget):
         self.last_name_input.setStyleSheet("")
         self.age_input.setStyleSheet("")
         self.contact_input.setStyleSheet("")
+
