@@ -90,6 +90,7 @@ CREATE INDEX idx_prescriptions_drug_id ON prescriptions(drug_id);
 CREATE INDEX idx_sales_patient_id ON sales(patient_id);
 CREATE INDEX idx_sales_sale_date ON sales(sale_date);
 CREATE INDEX idx_sale_items_sale_id ON sale_items(sale_id);
+
 -- Insert a default admin user
 INSERT INTO users (username, password_hash, role)
 VALUES ('admin', '$2b$12$3X8G8k3z3Q9z2g5r7q8w9u8z7y6x5w4v3u2t1r0q9p8o7n6m5k4j3', 'admin');
