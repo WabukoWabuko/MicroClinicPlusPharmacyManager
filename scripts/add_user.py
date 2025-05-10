@@ -5,7 +5,7 @@ import os
 def init_database():
     """Initialize the database with schema.sql if it doesn't exist."""
     db_path = "database/clinic.db"
-    schema_path = "db/schema.sql"
+    schema_path = "database/schema.sql"
     
     if not os.path.exists(db_path) or not table_exists("users"):
         conn = sqlite3.connect(db_path)
@@ -63,5 +63,5 @@ if __name__ == "__main__":
     # Initialize database if needed
     init_database()
     # Example: Add admin user
-    add_user("admin2", "password123", "admin")  # Use 'admin2' to avoid conflict with schema.sql's default admin
-    #add_user("staff1", "password123", "staff")
+    #add_user("admin2", "password123", "admin")  # Use 'admin2' to avoid conflict with schema.sql's default admin
+    add_user("staff1", "password123", "staff")

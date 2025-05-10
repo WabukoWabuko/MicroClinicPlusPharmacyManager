@@ -100,11 +100,18 @@ class LoginWidget(QWidget):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
 
-        user = self.db.authenticate_user(username, password)
-        if user:
-            self.main_window.current_user = user
-            self.main_window.show_menu()
-            self.username_input.clear()
-            self.password_input.clear()
-        else:
-            QMessageBox.warning(self, "Error", "Invalid username or password.")
+        if not username or not password:
+            QMessageBox.warning(self, "Error", "Username and password cannot be empty.")
+            return
+
+        try:
+            user = self.db.authenticate_user(username, password)
+            if user:
+                self.main_window.current_user = user
+                self.main_window.show_menu()
+                self.username_input.clear()
+                self.password_input.clear()
+            else:
+                QMessageBox.warning(self, "Error", "Invalid username or password.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Login failed: {str(e)}")
