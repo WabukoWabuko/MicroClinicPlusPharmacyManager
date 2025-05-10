@@ -1,7 +1,6 @@
-import sys
-import qtawesome as qta
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QMessageBox
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QStackedWidget, QVBoxLayout
 from PyQt6.QtCore import Qt
+from db.database import Database
 from ui.login import LoginWidget
 from ui.patient_management import PatientManagementWidget
 from ui.prescription_logging import PrescriptionLoggingWidget
@@ -13,20 +12,23 @@ from ui.reporting_dashboard import ReportingDashboardWidget
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.db = Database()  # Initialize database
         self.current_user = None
         self.high_contrast = False
         self.init_ui()
 
     def init_ui(self):
         self.setWindowTitle("MicroClinicPlus Pharmacy Manager")
-        self.setGeometry(100, 100, 800, 600)
+        self.setMinimumSize(800, 600)
 
-        # Central widget
+        # Central widget with stacked layout
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
+        self.stack = QStackedWidget()
+        self.layout.addWidget(self.stack)
 
-        # Initialize widgets
+        # Initialize UI widgets
         self.login_widget = LoginWidget(self)
         self.patient_management = PatientManagementWidget(self)
         self.prescription_logging = PrescriptionLoggingWidget(self)
@@ -34,215 +36,134 @@ class MainWindow(QMainWindow):
         self.sales_management = SalesManagementWidget(self)
         self.user_management = UserManagementWidget(self)
         self.reporting_dashboard = ReportingDashboardWidget(self)
+        self.menu_widget = self.create_menu_widget()
 
-        # Apply stylesheet
-        self.apply_stylesheet()
+        # Add widgets to stack
+        self.stack.addWidget(self.login_widget)
+        self.stack.addWidget(self.menu_widget)
+        self.stack.addWidget(self.patient_management)
+        self.stack.addWidget(self.prescription_logging)
+        self.stack.addWidget(self.inventory_management)
+        self.stack.addWidget(self.sales_management)
+        self.stack.addWidget(self.user_management)
+        self.stack.addWidget(self.reporting_dashboard)
 
-        # Show login
+        # Show login screen initially
         self.show_login()
 
-    def apply_stylesheet(self):
-        """Apply global stylesheet based on contrast mode."""
-        normal_style = """
-            QWidget {
-                font-family: Roboto, sans-serif;
-                font-size: 14px;
-                background-color: #f5f5f5;
-            }
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border-radius: 5px;
-                padding: 8px;
-                margin: 2px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-            QLineEdit, QTextEdit, QComboBox {
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                padding: 5px;
-                background-color: white;
-            }
-            QLineEdit:invalid, QTextEdit:invalid {
-                border: 1px solid red;
-            }
-            QTableWidget {
-                gridline-color: #ccc;
-                background-color: white;
-            }
-            QHeaderView::section {
-                background-color: #4CAF50;
-                color: white;
-                padding: 5px;
-            }
-            QLabel {
-                color: #333;
-            }
-        """
-        high_contrast_style = """
-            QWidget {
-                font-family: Roboto, sans-serif;
-                font-size: 14px;
-                background-color: black;
-                color: white;
-            }
-            QPushButton {
-                background-color: #00ff00;
-                color: black;
-                border: 2px solid white;
-                border-radius: 5px;
-                padding: 8px;
-                margin: 2px;
-            }
-            QPushButton:hover {
-                background-color: #00cc00;
-            }
-            QLineEdit, QTextEdit, QComboBox {
-                border: 2px solid white;
-                border-radius: 4px;
-                padding: 5px;
-                background-color: black;
-                color: white;
-            }
-            QLineEdit:invalid, QTextEdit:invalid {
-                border: 2px solid red;
-            }
-            QTableWidget {
-                gridline-color: white;
-                background-color: black;
-                color: white;
-            }
-            QHeaderView::section {
-                background-color: #00ff00;
-                color: black;
-                padding: 5px;
-                border: 1px solid white;
-            }
-            QLabel {
-                color: white;
-            }
-        """
-        self.setStyleSheet(high_contrast_style if self.high_contrast else normal_style)
+    def create_menu_widget(self):
+        menu_widget = QWidget()
+        layout = QVBoxLayout()
+        menu_widget.setLayout(layout)
 
-    def toggle_high_contrast(self):
-        """Toggle high-contrast mode."""
-        self.high_contrast = not self.high_contrast
-        self.apply_stylesheet()
-        # Re-apply current widget to refresh
-        current_widget = self.layout.itemAt(0).widget()
-        if current_widget:
-            self.layout.removeWidget(current_widget)
-            self.layout.addWidget(current_widget)
+        # Menu buttons
+        buttons = [
+            ("Patient Management", self.show_patient_management, "#4CAF50"),
+            ("Prescription Logging", self.show_prescription_logging, "#4CAF50"),
+            ("Inventory Management", self.show_inventory_management, "#4CAF50"),
+            ("Sales Management", self.show_sales_management, "#4CAF50"),
+            ("User Management", self.show_user_management, "#4CAF50"),
+            ("Reporting Dashboard", self.show_reporting_dashboard, "#4CAF50"),
+            ("Toggle High Contrast", self.toggle_high_contrast, "#555555"),
+            ("Logout", self.show_login, "#f44336")
+        ]
+
+        for text, slot, color in buttons:
+            button = QPushButton(text)
+            button.setToolTip(f"{text}")
+            button.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color};
+                    color: white;
+                    padding: 10px;
+                    border: none;
+                    border-radius: 4px;
+                    font-size: 16px;
+                    margin: 5px;
+                }}
+                QPushButton:hover {{
+                    background-color: {self.lighten_color(color)};
+                }}
+                QPushButton:pressed {{
+                    background-color: {self.darken_color(color)};
+                }}
+            """)
+            button.clicked.connect(slot)
+            layout.addWidget(button)
+
+        layout.addStretch()
+        return menu_widget
+
+    def lighten_color(self, hex_color):
+        color = int(hex_color[1:], 16)
+        r = min(255, ((color >> 16) & 255) + 20)
+        g = min(255, ((color >> 8) & 255) + 20)
+        b = min(255, (color & 255) + 20)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    def darken_color(self, hex_color):
+        color = int(hex_color[1:], 16)
+        r = max(0, ((color >> 16) & 255) - 20)
+        g = max(0, ((color >> 8) & 255) - 20)
+        b = max(0, (color & 255) - 20)
+        return f"#{r:02x}{g:02x}{b:02x}"
 
     def show_login(self):
-        self.clear_layout()
-        self.layout.addWidget(self.login_widget)
+        self.current_user = None
+        self.stack.setCurrentWidget(self.login_widget)
 
     def show_menu(self):
-        self.clear_layout()
-        menu_widget = QWidget()
-        menu_layout = QVBoxLayout(menu_widget)
-
-        # Menu buttons with icons
-        patient_button = QPushButton("Patient Management")
-        patient_button.setIcon(qta.icon('mdi.account-plus'))
-        patient_button.clicked.connect(self.show_patient_management)
-
-        prescription_button = QPushButton("Prescription Logging")
-        prescription_button.setIcon(qta.icon('mdi.prescription'))
-        prescription_button.clicked.connect(self.show_prescription_logging)
-
-        inventory_button = QPushButton("Inventory Management")
-        inventory_button.setIcon(qta.icon('mdi.warehouse'))
-        inventory_button.clicked.connect(self.show_inventory_management)
-
-        sales_button = QPushButton("Sales & Receipts")
-        sales_button.setIcon(qta.icon('mdi.cash-register'))
-        sales_button.clicked.connect(self.show_sales_management)
-
-        user_button = QPushButton("User Management")
-        user_button.setIcon(qta.icon('mdi.account-group'))
-        user_button.clicked.connect(self.show_user_management)
-
-        report_button = QPushButton("Reports")
-        report_button.setIcon(qta.icon('mdi.chart-bar'))
-        report_button.clicked.connect(self.show_reporting_dashboard)
-
-        contrast_button = QPushButton("Toggle High Contrast")
-        contrast_button.setIcon(qta.icon('mdi.contrast'))
-        contrast_button.clicked.connect(self.toggle_high_contrast)
-
-        logout_button = QPushButton("Logout")
-        logout_button.setIcon(qta.icon('mdi.logout'))
-        logout_button.clicked.connect(self.show_login)
-
-        # Role-based access
-        if self.current_user['role'] == 'admin':
-            menu_layout.addWidget(patient_button)
-            menu_layout.addWidget(prescription_button)
-            menu_layout.addWidget(inventory_button)
-            menu_layout.addWidget(sales_button)
-            menu_layout.addWidget(user_button)
-            menu_layout.addWidget(report_button)
-        else:  # staff
-            menu_layout.addWidget(patient_button)
-            menu_layout.addWidget(prescription_button)
-            menu_layout.addWidget(sales_button)
-            menu_layout.addWidget(report_button)
-
-        menu_layout.addWidget(contrast_button)
-        menu_layout.addWidget(logout_button)
-        menu_layout.addStretch()
-
-        self.layout.addWidget(menu_widget)
-        self.check_low_stock_alerts()
-
-    def clear_layout(self):
-        while self.layout.count():
-            item = self.layout.takeAt(0)
-            if item.widget():
-                item.widget().setParent(None)
+        if self.current_user:
+            self.stack.setCurrentWidget(self.menu_widget)
 
     def show_patient_management(self):
-        self.clear_layout()
-        self.layout.addWidget(self.patient_management)
+        if self.current_user:
+            self.stack.setCurrentWidget(self.patient_management)
 
     def show_prescription_logging(self):
-        self.clear_layout()
-        self.layout.addWidget(self.prescription_logging)
+        if self.current_user:
+            self.stack.setCurrentWidget(self.prescription_logging)
 
     def show_inventory_management(self):
-        if self.current_user['role'] == 'admin':
-            self.clear_layout()
-            self.layout.addWidget(self.inventory_management)
-        else:
-            QMessageBox.warning(self, "Access Denied", "Only admins can access inventory management.")
+        if self.current_user:
+            self.stack.setCurrentWidget(self.inventory_management)
 
     def show_sales_management(self):
-        self.clear_layout()
-        self.layout.addWidget(self.sales_management)
+        if self.current_user:
+            self.stack.setCurrentWidget(self.sales_management)
 
     def show_user_management(self):
-        if self.current_user['role'] == 'admin':
-            self.clear_layout()
-            self.layout.addWidget(self.user_management)
-        else:
-            QMessageBox.warning(self, "Access Denied", "Only admins can access user management.")
+        if self.current_user:
+            self.stack.setCurrentWidget(self.user_management)
 
     def show_reporting_dashboard(self):
-        self.clear_layout()
-        self.layout.addWidget(self.reporting_dashboard)
+        if self.current_user:
+            self.stack.setCurrentWidget(self.reporting_dashboard)
 
-    def check_low_stock_alerts(self):
-        if self.current_user['role'] == 'admin':
-            low_stock_drugs = self.inventory_management.db.get_low_stock_drugs()
-            if low_stock_drugs:
-                drugs_list = "\n".join([f"{drug['name']} (Qty: {drug['quantity']})" for drug in low_stock_drugs])
-                QMessageBox.warning(self, "Low Stock Alert", f"The following drugs are low in stock:\n{drugs_list}")
+    def toggle_high_contrast(self):
+        self.high_contrast = not self.high_contrast
+        if self.high_contrast:
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: black;
+                    color: white;
+                }
+                QLineEdit, QComboBox, QTextEdit {
+                    background-color: #333;
+                    color: white;
+                    border: 1px solid white;
+                }
+                QTableWidget {
+                    background-color: #333;
+                    color: white;
+                    gridline-color: white;
+                }
+            """)
+        else:
+            self.setStyleSheet("")
 
 if __name__ == '__main__':
+    import sys
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

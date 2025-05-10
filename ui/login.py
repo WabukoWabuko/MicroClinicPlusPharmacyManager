@@ -5,7 +5,7 @@ class LoginWidget(QWidget):
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window
-        self.db = self.main_window.db
+        self.db = self.main_window.db  # Access database from MainWindow
         self.init_ui()
 
     def init_ui(self):
