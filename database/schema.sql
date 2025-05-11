@@ -8,7 +8,7 @@ DROP TABLE IF EXISTS users;
 
 -- Users table: Stores admin and staff accounts
 CREATE TABLE users (
-    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id SERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('admin', 'staff')),
@@ -19,7 +19,7 @@ CREATE TABLE users (
 
 -- Patients table: Stores patient information
 CREATE TABLE patients (
-    patient_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id SERIAL PRIMARY KEY,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     age INTEGER NOT NULL CHECK (age > 0 AND age <= 150),
@@ -32,7 +32,7 @@ CREATE TABLE patients (
 
 -- Drugs table: Stores inventory details
 CREATE TABLE drugs (
-    drug_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    drug_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     quantity INTEGER NOT NULL CHECK (quantity >= 0),
     batch_number TEXT NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE drugs (
 
 -- Prescriptions table: Stores prescription records
 CREATE TABLE prescriptions (
-    prescription_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prescription_id SERIAL PRIMARY KEY,
     patient_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     diagnosis TEXT NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE prescriptions (
 
 -- Sales table: Stores sale transactions
 CREATE TABLE sales (
-    sale_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sale_id SERIAL PRIMARY KEY,
     patient_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     total_price REAL NOT NULL CHECK (total_price >= 0),
@@ -73,7 +73,7 @@ CREATE TABLE sales (
 
 -- Sale Items table: Stores individual items in a sale
 CREATE TABLE sale_items (
-    sale_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sale_item_id SERIAL PRIMARY KEY,
     sale_id INTEGER NOT NULL,
     drug_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL CHECK (quantity > 0),
