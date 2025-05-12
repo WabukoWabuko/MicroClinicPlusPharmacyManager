@@ -79,7 +79,7 @@ class PatientManagementWidget(QWidget):
         """)
         self.contact_input = QLineEdit()
         self.contact_input.setPlaceholderText("e.g., +254700123456")
-        self.contact_input.setToolTip("Patient's contact number")
+        self.contact_input.setToolTip("Patient's contact number (e.g., +254700123456)")
         self.contact_input.setStyleSheet("""
             QLineEdit {
                 padding: 8px;

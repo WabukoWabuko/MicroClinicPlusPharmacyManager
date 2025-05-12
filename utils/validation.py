@@ -1,13 +1,24 @@
 import re
 from datetime import datetime
 
+def is_valid_name(name):
+    if not name:
+        return False, "Name is required."
+    if not name.isalpha():
+        return False, "Name must contain only letters."
+    if len(name) < 2:
+        return False, "Name must be at least 2 characters long."
+    return True, ""
+
 def is_valid_phone(phone):
-    """Validate phone number (e.g., +254 or 10 digits)."""
     if not phone:
         return False, "Phone number is required."
-    pattern = r"^\+?\d{10}$"
-    if not re.match(pattern, phone):
-        return False, "Phone number must be 10 digits or start with + (e.g., +254700123456)."
+    # Check format: starts with +, followed by 1-3 digits (country code), then exactly 9 digits
+    if not re.match(r'^\+\d{1,3}\d{9}$', phone):
+        return False, "Phone number must start with a country code (e.g., +254) followed by exactly 9 digits (total 12 characters including +)."
+    # Verify total length is exactly 12 characters
+    if len(phone) != 12:
+        return False, "Phone number must be exactly 12 characters including the country code (e.g., +254700123456)."
     return True, ""
 
 def is_valid_date(date_str):
