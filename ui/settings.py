@@ -355,9 +355,9 @@ class SettingsWidget(QWidget):
         config = self.db.load_config()
         if is_admin:
             self.clinic_input.setText(config["clinic_name"])
-            self.logo_label.setText(config["logo_path"] if config["logo_path"] else "No logo selected")
-            self.bg_label.setText(config["background_path"] if config["background_path"] else "No background selected")
-            self.tax_input.setText(str(config.get("tax_rate", "")))
+            self.logo_label.setText(config.get("logo_path", "") if config.get("logo_path", "") else "No logo selected")
+            self.bg_label.setText(config.get("background_path", "") if config.get("background_path", "") else "No background selected")
+            self.tax_input.setText(str(config.get("tax_rate", 0)))
             self.contact_input.setText(config.get("contact_details", ""))
         self.sync_toggle.setChecked(config["sync_enabled"])
 

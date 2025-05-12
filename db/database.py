@@ -53,6 +53,9 @@ class Database:
         default_config = {
             "clinic_name": "MicroClinic",
             "logo_path": "",
+            "background_path": "",
+            "tax_rate": 0,
+            "contact_details": "",
             "currency_symbol": "KSh",
             "sync_enabled": False
         }
