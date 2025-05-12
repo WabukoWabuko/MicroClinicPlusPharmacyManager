@@ -35,3 +35,4 @@ assets/icons/*.png
 !assets/icons/edit.png
 !assets/icons/login.png
 !assets/icons/assessment.png
+.env
