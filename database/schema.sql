@@ -8,7 +8,7 @@ DROP TABLE IF EXISTS users;
 
 -- Users table: Stores admin and staff accounts
 CREATE TABLE users (
-    user_id SERIAL PRIMARY KEY,
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('admin', 'staff')),
@@ -19,7 +19,7 @@ CREATE TABLE users (
 
 -- Patients table: Stores patient information
 CREATE TABLE patients (
-    patient_id SERIAL PRIMARY KEY,
+    patient_id INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     age INTEGER NOT NULL CHECK (age > 0 AND age <= 150),
@@ -27,24 +27,28 @@ CREATE TABLE patients (
     contact TEXT NOT NULL,
     medical_history TEXT,
     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_synced INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'pending'
 );
 
 -- Drugs table: Stores inventory details
 CREATE TABLE drugs (
-    drug_id SERIAL PRIMARY KEY,
+    drug_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     quantity INTEGER NOT NULL CHECK (quantity >= 0),
     batch_number TEXT NOT NULL,
     expiry_date TEXT NOT NULL,
     price REAL NOT NULL CHECK (price >= 0),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_synced INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'pending'
 );
 
 -- Prescriptions table: Stores prescription records
 CREATE TABLE prescriptions (
-    prescription_id SERIAL PRIMARY KEY,
+    prescription_id INTEGER PRIMARY KEY AUTOINCREMENT,
     patient_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     diagnosis TEXT NOT NULL,
@@ -55,6 +59,8 @@ CREATE TABLE prescriptions (
     duration TEXT NOT NULL,
     quantity_prescribed INTEGER NOT NULL CHECK (quantity_prescribed > 0),
     prescription_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_synced INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'pending',
     FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL,
     FOREIGN KEY (drug_id) REFERENCES drugs(drug_id) ON DELETE CASCADE
@@ -62,22 +68,26 @@ CREATE TABLE prescriptions (
 
 -- Sales table: Stores sale transactions
 CREATE TABLE sales (
-    sale_id SERIAL PRIMARY KEY,
+    sale_id INTEGER PRIMARY KEY AUTOINCREMENT,
     patient_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     total_price REAL NOT NULL CHECK (total_price >= 0),
     sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_synced INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'pending',
     FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
 -- Sale Items table: Stores individual items in a sale
 CREATE TABLE sale_items (
-    sale_item_id SERIAL PRIMARY KEY,
+    sale_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
     sale_id INTEGER NOT NULL,
     drug_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     price REAL NOT NULL CHECK (price >= 0),
+    is_synced INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'pending',
     FOREIGN KEY (sale_id) REFERENCES sales(sale_id) ON DELETE CASCADE,
     FOREIGN KEY (drug_id) REFERENCES drugs(drug_id) ON DELETE CASCADE
 );
@@ -91,6 +101,13 @@ CREATE INDEX idx_sales_patient_id ON sales(patient_id);
 CREATE INDEX idx_sales_sale_date ON sales(sale_date);
 CREATE INDEX idx_sale_items_sale_id ON sale_items(sale_id);
 
--- Insert a default admin user
-INSERT INTO users (username, password_hash, role)
-VALUES ('admin', '$2b$12$3X8G8k3z3Q9z2g5r7q8w9u8z7y6x5w4v3u2t1r0q9p8o7n6m5k4j3', 'admin');
+-- Sync queue table
+CREATE TABLE sync_queue (
+    queue_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    record_id INTEGER NOT NULL,
+    data TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status TEXT DEFAULT 'pending'
+);
