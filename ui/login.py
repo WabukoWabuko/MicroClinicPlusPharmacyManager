@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap
 
 class LoginWidget(QWidget):
     def __init__(self, main_window):
@@ -15,112 +16,85 @@ class LoginWidget(QWidget):
         self.set_title("Login")
         title = QLabel("MicroClinic Plus Pharmacy Manager")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF; margin: 10px;")
+        title.setStyleSheet("font-size: 24px; font-weight: bold; color: #FFFFFF; margin: 30px;")
         main_layout.addWidget(title)
 
-        # Logo and Quote Card
-        card = QWidget()
-        card_layout = QVBoxLayout(card)
-        card.setStyleSheet("""
-            QWidget {
-                background-color: #1E1E1E;
-                border: 1px solid #333333;
-                border-radius: 10px;
-                padding: 20px;
-            }
-        """)
-        logo_label = QLabel("Clinic Logo")
+        # Logo and Quote
+        logo_label = QLabel()
+        pixmap = QPixmap("database/logo.png")  # Replace with your image path
+        if not pixmap.isNull():
+            scaled_pixmap = pixmap.scaled(200, 200, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            logo_label.setPixmap(scaled_pixmap)
+        else:
+            logo_label.setText("Clinic Logo")
+            logo_label.setStyleSheet("font-size: 18px; color: #4CAF50; margin: 20px;")
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo_label.setStyleSheet("font-size: 14px; color: #4CAF50; margin: 10px;")
-        card_layout.addWidget(logo_label)
+        main_layout.addWidget(logo_label)
+
         quote_label = QLabel('"Health is wealth - Prioritize your well-being"')
         quote_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        quote_label.setStyleSheet("font-size: 12px; color: #FFFFFF; italic; margin: 10px;")
-        card_layout.addWidget(quote_label)
-        main_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
+        quote_label.setStyleSheet("font-size: 14px; color: #FFFFFF; font-style: italic; margin: 20px;")
+        main_layout.addWidget(quote_label)
 
-        # Login Form Card
-        form_card = QWidget()
-        form_layout = QVBoxLayout(form_card)
-        form_card.setStyleSheet("""
-            QWidget {
-                background-color: #1E1E1E;
-                border: 1px solid #333333;
-                border-radius: 10px;
-                padding: 20px;
-            }
-        """)
-
+        # Username
         username_layout = QHBoxLayout()
         username_label = QLabel("Username:")
-        username_label.setStyleSheet("font-size: 14px; color: #FFFFFF;")
+        username_label.setStyleSheet("font-size: 16px; color: #FFFFFF; padding: 5px;")
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Enter username")
         self.username_input.setToolTip("Enter your username")
         self.username_input.setStyleSheet("""
             QLineEdit {
-                padding: 8px;
-                border: 1px solid #4CAF50;
-                border-radius: 5px;
-                font-size: 14px;
+                padding: 10px;
+                border: 2px solid #4CAF50;
+                border-radius: 8px;
+                font-size: 16px;
                 background-color: #2E2E2E;
                 color: #FFFFFF;
-                max-width: 200px;
+                min-width: 300px;
             }
         """)
         username_layout.addWidget(username_label)
         username_layout.addWidget(self.username_input)
         username_layout.addStretch()
-        form_layout.addLayout(username_layout)
+        main_layout.addLayout(username_layout)
 
+        # Password
         password_layout = QHBoxLayout()
         password_label = QLabel("Password:")
-        password_label.setStyleSheet("font-size: 14px; color: #FFFFFF;")
+        password_label.setStyleSheet("font-size: 16px; color: #FFFFFF; padding: 5px;")
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Enter password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setToolTip("Enter your password")
         self.password_input.setStyleSheet("""
             QLineEdit {
-                padding: 8px;
-                border: 1px solid #4CAF50;
-                border-radius: 5px;
-                font-size: 14px;
+                padding: 10px;
+                border: 2px solid #4CAF50;
+                border-radius: 8px;
+                font-size: 16px;
                 background-color: #2E2E2E;
                 color: #FFFFFF;
-                max-width: 200px;
+                min-width: 300px;
             }
         """)
         password_layout.addWidget(password_label)
         password_layout.addWidget(self.password_input)
         password_layout.addStretch()
-        form_layout.addLayout(password_layout)
+        main_layout.addLayout(password_layout)
 
-        main_layout.addWidget(form_card, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # Buttons Card
-        button_card = QWidget()
-        button_layout = QHBoxLayout(button_card)
-        button_card.setStyleSheet("""
-            QWidget {
-                background-color: #1E1E1E;
-                border: 1px solid #333333;
-                border-radius: 10px;
-                padding: 20px;
-            }
-        """)
-
+        # Buttons
+        button_layout = QHBoxLayout()
         login_button = QPushButton("Login")
         login_button.setToolTip("Log in to the application")
         login_button.setStyleSheet("""
             QPushButton {
                 background-color: #4CAF50;
                 color: #FFFFFF;
-                padding: 10px;
+                padding: 12px 24px;
                 border: none;
-                border-radius: 5px;
-                font-size: 14px;
-                min-width: 120px;
+                border-radius: 8px;
+                font-size: 16px;
             }
             QPushButton:hover {
                 background-color: #45a049;
@@ -138,11 +112,10 @@ class LoginWidget(QWidget):
             QPushButton {
                 background-color: #f44336;
                 color: #FFFFFF;
-                padding: 10px;
+                padding: 12px 24px;
                 border: none;
-                border-radius: 5px;
-                font-size: 14px;
-                min-width: 120px;
+                border-radius: 8px;
+                font-size: 16px;
             }
             QPushButton:hover {
                 background-color: #da190b;
@@ -153,31 +126,17 @@ class LoginWidget(QWidget):
         """)
         clear_button.clicked.connect(self.clear_fields)
         button_layout.addWidget(clear_button)
-        button_layout.addStretch()
-        main_layout.addWidget(button_card, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # Toggle Contrast Card
-        toggle_card = QWidget()
-        toggle_layout = QHBoxLayout(toggle_card)
-        toggle_card.setStyleSheet("""
-            QWidget {
-                background-color: #1E1E1E;
-                border: 1px solid #333333;
-                border-radius: 10px;
-                padding: 20px;
-            }
-        """)
         toggle_contrast_button = QPushButton("Toggle High Contrast")
         toggle_contrast_button.setToolTip("Toggle high contrast mode")
         toggle_contrast_button.setStyleSheet("""
             QPushButton {
                 background-color: #555555;
                 color: #FFFFFF;
-                padding: 10px;
+                padding: 12px 24px;
                 border: none;
-                border-radius: 5px;
-                font-size: 14px;
-                min-width: 120px;
+                border-radius: 8px;
+                font-size: 16px;
             }
             QPushButton:hover {
                 background-color: #666666;
@@ -187,9 +146,9 @@ class LoginWidget(QWidget):
             }
         """)
         toggle_contrast_button.clicked.connect(self.main_window.toggle_contrast)
-        toggle_layout.addWidget(toggle_contrast_button)
-        toggle_layout.addStretch()
-        main_layout.addWidget(toggle_card, alignment=Qt.AlignmentFlag.AlignCenter)
+        button_layout.addWidget(toggle_contrast_button)
+        button_layout.addStretch()
+        main_layout.addLayout(button_layout)
 
         main_layout.addStretch()
 

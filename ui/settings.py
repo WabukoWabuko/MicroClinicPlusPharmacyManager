@@ -17,25 +17,13 @@ class SettingsWidget(QWidget):
         self.set_title("Settings")
         title = QLabel("Settings")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF; margin: 10px;")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF; margin: 20px;")
         main_layout.addWidget(title)
-
-        # Card for Settings
-        card = QWidget()
-        card_layout = QVBoxLayout(card)
-        card.setStyleSheet("""
-            QWidget {
-                background-color: #1E1E1E;
-                border: 1px solid #333333;
-                border-radius: 10px;
-                padding: 20px;
-            }
-        """)
 
         # Clinic name
         clinic_layout = QHBoxLayout()
         clinic_label = QLabel("Clinic Name:")
-        clinic_label.setStyleSheet("font-size: 14px; color: #FFFFFF;")
+        clinic_label.setStyleSheet("font-size: 14px; color: #FFFFFF; padding: 5px;")
         self.clinic_input = QLineEdit()
         self.clinic_input.setPlaceholderText("Enter clinic name")
         self.clinic_input.setToolTip("Name of the clinic for receipts")
@@ -47,18 +35,18 @@ class SettingsWidget(QWidget):
                 font-size: 14px;
                 background-color: #2E2E2E;
                 color: #FFFFFF;
-                max-width: 200px;
+                min-width: 300px;
             }
         """)
         clinic_layout.addWidget(clinic_label)
         clinic_layout.addWidget(self.clinic_input)
         clinic_layout.addStretch()
-        card_layout.addLayout(clinic_layout)
+        main_layout.addLayout(clinic_layout)
 
         # Logo
         logo_layout = QHBoxLayout()
         logo_label = QLabel("Receipt Logo:")
-        logo_label.setStyleSheet("font-size: 14px; color: #FFFFFF;")
+        logo_label.setStyleSheet("font-size: 14px; color: #FFFFFF; padding: 5px;")
         self.logo_button = QPushButton("Choose Logo")
         self.logo_button.setToolTip("Select a PNG or JPG logo for receipts")
         self.logo_button.setStyleSheet("""
@@ -78,17 +66,17 @@ class SettingsWidget(QWidget):
             }
         """)
         self.logo_label = QLabel("No logo selected")
-        self.logo_label.setStyleSheet("font-size: 12px; color: #FFFFFF;")
+        self.logo_label.setStyleSheet("font-size: 12px; color: #FFFFFF; padding: 5px;")
         logo_layout.addWidget(logo_label)
         logo_layout.addWidget(self.logo_button)
         logo_layout.addWidget(self.logo_label)
         logo_layout.addStretch()
-        card_layout.addLayout(logo_layout)
+        main_layout.addLayout(logo_layout)
 
         # Currency symbol
         currency_layout = QHBoxLayout()
         currency_label = QLabel("Currency Symbol:")
-        currency_label.setStyleSheet("font-size: 14px; color: #FFFFFF;")
+        currency_label.setStyleSheet("font-size: 14px; color: #FFFFFF; padding: 5px;")
         self.currency_combo = QComboBox()
         self.currency_combo.addItems(["KSh", "$", "£", "€", "₹", "¥", "A$"])
         self.currency_combo.setToolTip("Select currency symbol for receipts")
@@ -100,13 +88,13 @@ class SettingsWidget(QWidget):
                 font-size: 14px;
                 background-color: #2E2E2E;
                 color: #FFFFFF;
-                max-width: 100px;
+                min-width: 100px;
             }
         """)
         currency_layout.addWidget(currency_label)
         currency_layout.addWidget(self.currency_combo)
         currency_layout.addStretch()
-        card_layout.addLayout(currency_layout)
+        main_layout.addLayout(currency_layout)
 
         # Load saved settings
         config = self.db.load_config()
@@ -123,21 +111,22 @@ class SettingsWidget(QWidget):
             QCheckBox {
                 font-size: 14px;
                 color: #FFFFFF;
+                padding: 5px;
             }
         """)
         sync_layout.addWidget(self.sync_toggle)
         sync_layout.addStretch()
-        card_layout.addLayout(sync_layout)
+        main_layout.addLayout(sync_layout)
 
         # Sync status
         self.status_label = QLabel(self.get_sync_status())
-        self.status_label.setStyleSheet("font-size: 12px; color: #FFFFFF;")
-        card_layout.addWidget(self.status_label)
+        self.status_label.setStyleSheet("font-size: 12px; color: #FFFFFF; padding: 5px;")
+        main_layout.addWidget(self.status_label)
 
         # Sync message
         sync_message = QLabel("Syncing is automatic when enabled, but you can sync manually using the button below.")
-        sync_message.setStyleSheet("font-size: 12px; color: #FFFFFF; font-style: italic;")
-        card_layout.addWidget(sync_message)
+        sync_message.setStyleSheet("font-size: 12px; color: #FFFFFF; font-style: italic; padding: 5px;")
+        main_layout.addWidget(sync_message)
 
         # Sync now button
         sync_now_button = QPushButton("Sync Now")
@@ -160,7 +149,7 @@ class SettingsWidget(QWidget):
             }
         """)
         sync_now_button.clicked.connect(self.manual_sync)
-        card_layout.addWidget(sync_now_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(sync_now_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Sync history table
         self.sync_table = QTableWidget()
@@ -173,14 +162,15 @@ class SettingsWidget(QWidget):
                 font-size: 12px;
                 background-color: #2E2E2E;
                 color: #FFFFFF;
+                margin: 10px 0;
             }
             QTableWidget::item {
-                padding: 4px;
+                padding: 8px;
             }
             QHeaderView::section {
                 background-color: #000000;
                 color: #FFFFFF;
-                padding: 4px;
+                padding: 8px;
                 border: 1px solid #4CAF50;
                 font-size: 12px;
             }
@@ -188,14 +178,15 @@ class SettingsWidget(QWidget):
         self.sync_table.setAlternatingRowColors(True)
         self.sync_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.sync_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
-        self.sync_table.setColumnWidth(0, 100)
-        self.sync_table.setColumnWidth(1, 80)
-        self.sync_table.setColumnWidth(2, 80)
-        self.sync_table.setColumnWidth(3, 80)
-        self.sync_table.setColumnWidth(4, 150)
-        self.sync_table.setColumnWidth(5, 200)
+        self.sync_table.setColumnWidth(0, 120)
+        self.sync_table.setColumnWidth(1, 100)
+        self.sync_table.setColumnWidth(2, 100)
+        self.sync_table.setColumnWidth(3, 100)
+        self.sync_table.setColumnWidth(4, 180)
+        self.sync_table.setColumnWidth(5, 250)
+        self.sync_table.verticalHeader().setDefaultSectionSize(30)  # Increase row height
         self.update_sync_table()
-        card_layout.addWidget(self.sync_table)
+        main_layout.addWidget(self.sync_table)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -243,10 +234,8 @@ class SettingsWidget(QWidget):
         back_button.clicked.connect(self.main_window.show_menu)
         button_layout.addWidget(back_button)
         button_layout.addStretch()
-        card_layout.addLayout(button_layout)
+        main_layout.addLayout(button_layout)
 
-        card_layout.addStretch()
-        main_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
         main_layout.addStretch()
 
     def set_title(self, title):
