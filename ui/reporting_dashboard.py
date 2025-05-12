@@ -5,8 +5,11 @@ from PyQt6.QtCore import Qt
 from db.database import Database
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus.flowables import HRFlowable
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.graphics.shapes import Image
 
 class ReportingDashboardWidget(QWidget):
     def __init__(self, main_window):
@@ -227,34 +230,94 @@ class ReportingDashboardWidget(QWidget):
         if not file_path:
             return
 
-        pdf = SimpleDocTemplate(file_path, pagesize=A4)
+        # Setup document with consistent margins
+        pdf = SimpleDocTemplate(file_path, pagesize=A4,
+                                leftMargin=20*mm, rightMargin=20*mm,
+                                topMargin=20*mm, bottomMargin=20*mm)
+
+        # Styles
         styles = getSampleStyleSheet()
+        header_style = ParagraphStyle(
+            'Header', parent=styles['Heading1'], fontSize=18,
+            alignment=1, spaceAfter=6)
+        normal_center = ParagraphStyle(
+            'NormalCenter', parent=styles['Normal'], alignment=1, fontSize=10)
+        normal = ParagraphStyle(
+            'Normal', parent=styles['Normal'], fontSize=10, leading=12)
+        small = ParagraphStyle(
+            'Small', parent=styles['Normal'], fontSize=8, leading=10)
+
         elements = []
 
-        elements.append(Paragraph("MicroClinicPlus Pharmacy", styles['Heading1']))
+        # Header
+        elements.append(Paragraph("Wabuko Health Clinic", header_style))
+        elements.append(Paragraph("123 Moi Avenue, Nairobi, Kenya", normal_center))
+        elements.append(Paragraph("Phone: +234 700 123 4567 | info@wabukohealth.ng", normal_center))
+        elements.append(Spacer(1, 4))
+        elements.append(HRFlowable(width=pdf.width, thickness=0.5, color=colors.black))
+        elements.append(Spacer(1, 8))
+
+        # Report Title
         elements.append(Paragraph(f"{report_type} Report", styles['Heading2']))
+        elements.append(Paragraph(f"Generated on: {self.db.get_current_date()}", normal))
         elements.append(Spacer(1, 12))
 
+        # Table Data
         headers = [self.report_table.horizontalHeaderItem(i).text() for i in range(self.report_table.columnCount())]
         data = [headers]
         for row in range(self.report_table.rowCount()):
             row_data = [self.report_table.item(row, col).text() for col in range(self.report_table.columnCount())]
             data.append(row_data)
 
-        table = Table(data)
+        # Calculate column widths dynamically based on content
+        col_widths = [pdf.width / len(headers)] * len(headers)  # Evenly distribute initially
+        # Adjust for specific reports
+        if report_type == "Patient Summary":
+            col_widths = [15*mm, 40*mm, 40*mm, 20*mm, 25*mm, 40*mm]
+        elif report_type == "Prescription History":
+            col_widths = [15*mm, 40*mm, 40*mm, 30*mm, 30*mm, 25*mm]
+        elif report_type == "Inventory Status":
+            col_widths = [15*mm, 40*mm, 25*mm, 35*mm, 30*mm, 25*mm]
+        elif report_type == "Sales Report":
+            col_widths = [25*mm, 50*mm, 35*mm, 30*mm]
+        elif report_type == "Low Stock Alert":
+            col_widths = [25*mm, 60*mm, 30*mm]
+
+        table = Table(data, colWidths=col_widths)
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+            ('TOPPADDING', (0, 0), (-1, 0), 6),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ]))
         elements.append(table)
         elements.append(Spacer(1, 12))
 
-        elements.append(Paragraph(f"Generated on: {self.db.get_current_date()}", styles['Normal']))
-        pdf.build(elements)
+        # Footer
+        elements.append(Paragraph("Thank you for choosing Wabuko Health Clinic!", normal_center))
+        elements.append(Paragraph("Contact: +234 700 123 4567 | info@wabukohealth.ng", normal_center))
+        elements.append(Spacer(1, 4))
+
+        # Build with canvas setup for background and logos
+        def on_page(canvas, doc):
+            # Background Image (faded hospital theme)
+            canvas.saveState()
+            canvas.setFillAlpha(0.2)  # Faded effect
+            canvas.drawImage('hospital_bg.png', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
+            canvas.restoreState()
+
+            # Logo (Top Left)
+            canvas.drawImage('logo.png', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+
+            # Logo (Bottom Right)
+            canvas.drawImage('logo.png', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+
+        pdf.build(elements, onFirstPage=on_page, onLaterPages=on_page)
         QMessageBox.information(self, "Success", f"Report exported to {file_path}")
