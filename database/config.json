@@ -2,5 +2,5 @@
     "clinic_name": "WabukoClinic",
     "logo_path": "",
     "currency_symbol": "KSh",
-    "sync_enabled": false
+    "sync_enabled": true
 }

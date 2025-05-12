@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdi
                              QHeaderView, QMessageBox)
 from PyQt6.QtCore import Qt
 from db.database import Database
+import bcrypt
 
 class UserManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -210,7 +211,10 @@ class UserManagementWidget(QWidget):
             return
 
         try:
-            self.db.add_user(username, password, role)
+            # Hash the password using bcrypt
+            salt = bcrypt.gensalt()
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), salt)
+            self.db.add_user(username, password_hash.decode('utf-8'), role)
             QMessageBox.information(self, "Success", "User added successfully.")
             self.load_users()
             self.clear_form()
@@ -233,7 +237,14 @@ class UserManagementWidget(QWidget):
             return
 
         try:
-            self.db.update_user(user_id, username, password, role)
+            # Hash the password if provided, otherwise keep the existing hash
+            if password:
+                salt = bcrypt.gensalt()
+                password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+            else:
+                existing_user = self.db.get_user_by_id(user_id)
+                password_hash = existing_user['password_hash']
+            self.db.update_user(user_id, username, password_hash, role)
             QMessageBox.information(self, "Success", "User updated successfully.")
             self.load_users()
             self.clear_form()

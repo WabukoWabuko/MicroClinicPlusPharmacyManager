@@ -341,7 +341,6 @@ class SalesManagementWidget(QWidget):
         doc = SimpleDocTemplate(file_path, pagesize=A4,
                                 leftMargin=20*mm, rightMargin=20*mm,
                                 topMargin=20*mm, bottomMargin=20*mm)
-        canvas = doc.canv
 
         # Styles
         styles = getSampleStyleSheet()
@@ -357,13 +356,6 @@ class SalesManagementWidget(QWidget):
 
         elements = []
 
-        # Background Image (faded hospital theme)
-        bg = Image('hospital_bg.png', width=A4[0]-40*mm, height=A4[1]-40*mm)
-        bg.drawOn(canvas, 20*mm, 20*mm)
-        canvas.setFillAlpha(0.2)  # Faded effect
-        canvas.drawImage('hospital_bg.png', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
-        canvas.setFillAlpha(1.0)  # Reset opacity
-
         # Header
         elements.append(Paragraph("Wabuko Health Clinic", header_style))
         elements.append(Paragraph("123 Moi Avenue, Nairobi, Kenya", normal_center))
@@ -371,9 +363,6 @@ class SalesManagementWidget(QWidget):
         elements.append(Spacer(1, 4))
         elements.append(HRFlowable(width=doc.width, thickness=0.5, color=colors.black))
         elements.append(Spacer(1, 8))
-
-        # Logo (Top Left)
-        canvas.drawImage('logo.png', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
 
         # Receipt Metadata
         receipt_id = f"RCPT-{sale['sale_date'][:10].replace('-', '')}-{sale_id:04d}"
@@ -466,9 +455,19 @@ class SalesManagementWidget(QWidget):
         elements.append(Paragraph("Contact: +234 700 123 4567 | info@wabukohealth.ng", normal_center))
         elements.append(Spacer(1, 4))
 
-        # Logo (Bottom Right)
-        canvas.drawImage('logo.png', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+        # Build with canvas setup for background and logos
+        def on_page(canvas, doc):
+            # Background Image (faded hospital theme)
+            canvas.saveState()
+            canvas.setFillAlpha(0.2)  # Faded effect
+            canvas.drawImage('database/hospital_bg2.jpg', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
+            canvas.restoreState()
 
-        # Build!
-        doc.build(elements)
+            # Logo (Top Left)
+            canvas.drawImage('database/logo2.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+
+            # Logo (Bottom Right)
+            canvas.drawImage('database/logo2.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+
+        doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
         QMessageBox.information(self, "Success", f"Receipt saved to:\n{file_path}")
