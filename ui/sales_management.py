@@ -12,12 +12,32 @@ from reportlab.lib.units import mm
 from reportlab.graphics.shapes import Rect, Image
 import os
 
+class SearchableComboBox(QComboBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setEditable(True)
+        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.completer().setCompletionMode(QComboBox.CompleterMode.PopupCompletion)
+        self.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        self.setStyleSheet("""
+            QComboBox {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QComboBox:focus {
+                border: 1px solid #4CAF50;
+            }
+        """)
+
 class SalesManagementWidget(QWidget):
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window
         self.db = Database()
         self.sale_items = []
+        self.low_stock_threshold = 10  # Define low stock threshold
         # Exchange rates (KSh as base currency)
         self.exchange_rates = {
             "KSh": 1.0,      # Kenyan Shilling
@@ -35,9 +55,13 @@ class SalesManagementWidget(QWidget):
         left_form = QVBoxLayout()
         right_form = QVBoxLayout()
 
-        self.patient_combo = QComboBox()
-        self.patient_combo.setToolTip("Select patient")
-        self.patient_combo.setStyleSheet("""
+        # Searchable patient combo
+        self.patient_search_combo = SearchableComboBox()
+        self.patient_search_combo.setToolTip("Search or select patient")
+        # Shortlist patient combo
+        self.patient_shortlist_combo = QComboBox()
+        self.patient_shortlist_combo.setToolTip("Select from frequent patients")
+        self.patient_shortlist_combo.setStyleSheet("""
             QComboBox {
                 padding: 8px;
                 border: 1px solid #ccc;
@@ -48,9 +72,13 @@ class SalesManagementWidget(QWidget):
                 border: 1px solid #4CAF50;
             }
         """)
-        self.drug_combo = QComboBox()
-        self.drug_combo.setToolTip("Select drug")
-        self.drug_combo.setStyleSheet("""
+        # Searchable drug combo
+        self.drug_search_combo = SearchableComboBox()
+        self.drug_search_combo.setToolTip("Search or select drug")
+        # Shortlist drug combo
+        self.drug_shortlist_combo = QComboBox()
+        self.drug_shortlist_combo.setToolTip("Select from frequent drugs")
+        self.drug_shortlist_combo.setStyleSheet("""
             QComboBox {
                 padding: 8px;
                 border: 1px solid #ccc;
@@ -95,10 +123,14 @@ class SalesManagementWidget(QWidget):
         self.currency_combo.setCurrentText(saved_currency)
         self.currency_combo.currentTextChanged.connect(self.save_currency)
 
-        left_form.addWidget(QLabel("Patient:"))
-        left_form.addWidget(self.patient_combo)
-        right_form.addWidget(QLabel("Drug:"))
-        right_form.addWidget(self.drug_combo)
+        left_form.addWidget(QLabel("Patient (Search):"))
+        left_form.addWidget(self.patient_search_combo)
+        left_form.addWidget(QLabel("Patient (Shortlist):"))
+        left_form.addWidget(self.patient_shortlist_combo)
+        right_form.addWidget(QLabel("Drug (Search):"))
+        right_form.addWidget(self.drug_search_combo)
+        right_form.addWidget(QLabel("Drug (Shortlist):"))
+        right_form.addWidget(self.drug_shortlist_combo)
         right_form.addWidget(QLabel("Quantity:"))
         right_form.addWidget(self.quantity_input)
         right_form.addWidget(QLabel("Currency:"))
@@ -261,18 +293,33 @@ class SalesManagementWidget(QWidget):
         self.main_window.config["sales_currency"] = selected_currency
 
     def load_data(self):
+        # Load patients
         patients = self.db.get_all_patients()
-        self.patient_combo.clear()
-        self.patient_combo.addItem("Select Patient")
+        self.patient_search_combo.clear()
+        self.patient_search_combo.addItem("Select Patient")
         for patient in patients:
-            self.patient_combo.addItem(f"{patient['first_name']} {patient['last_name']}", patient['patient_id'])
+            self.patient_search_combo.addItem(f"{patient['first_name']} {patient['last_name']}", patient['patient_id'])
+        # Load patient shortlist (top 5)
+        top_patients = self.db.get_top_patients(5)  # Assuming this method exists
+        self.patient_shortlist_combo.clear()
+        self.patient_shortlist_combo.addItem("Select Frequent Patient")
+        for patient in top_patients:
+            self.patient_shortlist_combo.addItem(f"{patient['first_name']} {patient['last_name']}", patient['patient_id'])
 
+        # Load drugs
         drugs = self.db.get_all_drugs()
-        self.drug_combo.clear()
-        self.drug_combo.addItem("Select Drug")
+        self.drug_search_combo.clear()
+        self.drug_search_combo.addItem("Select Drug")
         for drug in drugs:
-            self.drug_combo.addItem(drug['name'], drug['drug_id'])
+            self.drug_search_combo.addItem(drug['name'], drug['drug_id'])
+        # Load drug shortlist (top 5)
+        top_drugs = self.db.get_top_drugs(5)  # Assuming this method exists
+        self.drug_shortlist_combo.clear()
+        self.drug_shortlist_combo.addItem("Select Frequent Drug")
+        for drug in top_drugs:
+            self.drug_shortlist_combo.addItem(drug['name'], drug['drug_id'])
 
+        # Load sales
         sales = self.db.get_all_sales()
         self.sales_table.setRowCount(len(sales))
         for row, sale in enumerate(sales):
@@ -283,12 +330,12 @@ class SalesManagementWidget(QWidget):
             self.sales_table.setItem(row, 3, QTableWidgetItem(sale['sale_date']))
 
     def add_sale_item(self):
-        drug_id = self.drug_combo.currentData()
+        drug_id = self.drug_search_combo.currentData() or self.drug_shortlist_combo.currentData()
         quantity = self.quantity_input.text().strip()
         selected_currency = self.currency_combo.currentText()
         rate = self.exchange_rates[selected_currency]
 
-        if not drug_id or self.drug_combo.currentText() == "Select Drug":
+        if not drug_id or (self.drug_search_combo.currentText() == "Select Drug" and self.drug_shortlist_combo.currentText() == "Select Frequent Drug"):
             QMessageBox.warning(self, "Error", "Please select a drug.")
             return
         if not quantity:
@@ -304,6 +351,10 @@ class SalesManagementWidget(QWidget):
             return
 
         drug = self.db.get_drug(drug_id)
+        if drug['quantity'] < quantity_val:
+            QMessageBox.warning(self, "Error", f"Insufficient stock for {drug['name']}. Available: {drug['quantity']}")
+            return
+
         price_in_ksh = drug['price'] * quantity_val
         converted_price = price_in_ksh * rate
 
@@ -329,8 +380,8 @@ class SalesManagementWidget(QWidget):
         self.quantity_input.clear()
 
     def complete_sale(self):
-        patient_id = self.patient_combo.currentData()
-        if not patient_id or self.patient_combo.currentText() == "Select Patient":
+        patient_id = self.patient_search_combo.currentData() or self.patient_shortlist_combo.currentData()
+        if not patient_id or (self.patient_search_combo.currentText() == "Select Patient" and self.patient_shortlist_combo.currentText() == "Select Frequent Patient"):
             QMessageBox.warning(self, "Error", "Please select a patient.")
             return
         if not self.sale_items:
@@ -339,6 +390,14 @@ class SalesManagementWidget(QWidget):
 
         total_price = sum(item['price'] for item in self.sale_items)  # Total in KSh
         try:
+            # Check stock before proceeding
+            for item in self.sale_items:
+                drug = self.db.get_drug(item['drug_id'])
+                if drug['quantity'] < item['quantity']:
+                    QMessageBox.warning(self, "Error", f"Insufficient stock for {drug['name']}. Available: {drug['quantity']}")
+                    return
+
+            # Record the sale
             sale_id = self.db.add_sale(
                 patient_id=patient_id,
                 user_id=self.main_window.current_user['user_id'],
@@ -351,6 +410,14 @@ class SalesManagementWidget(QWidget):
                     quantity=item['quantity'],
                     price=item['price']  # Store in KSh
                 )
+                # Reduce stock
+                new_quantity = self.db.get_drug(item['drug_id'])['quantity'] - item['quantity']
+                self.db.update_drug_quantity(item['drug_id'], new_quantity)
+                # Check if stock is low
+                if new_quantity <= self.low_stock_threshold:
+                    QMessageBox.information(self, "Low Stock Warning",
+                                            f"Stock for {item['name']} is low. Remaining: {new_quantity} units.")
+
             QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
             self.load_data()
             self.clear_sale_items()
@@ -533,7 +600,7 @@ class SalesManagementWidget(QWidget):
                 canvas.drawImage(logo_path, A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
             else:
                 # Fallback logo
-                if os.path.exists('assets/logo.png'):
+                if os.path.exists('assets/logo.jpg'):
                     canvas.drawImage('assets/logo.png', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
 
         doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
