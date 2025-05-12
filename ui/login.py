@@ -24,9 +24,9 @@ class LoginWidget(QWidget):
         card.setStyleSheet("""
             QWidget {
                 background-color: #1E1E1E;
+                border: 1px solid #333333;
                 border-radius: 10px;
                 padding: 20px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             }
         """)
         logo_label = QLabel("Clinic Logo")
@@ -37,7 +37,7 @@ class LoginWidget(QWidget):
         quote_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         quote_label.setStyleSheet("font-size: 12px; color: #FFFFFF; italic; margin: 10px;")
         card_layout.addWidget(quote_label)
-        main_layout.addWidget(card)
+        main_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Login Form Card
         form_card = QWidget()
@@ -45,9 +45,9 @@ class LoginWidget(QWidget):
         form_card.setStyleSheet("""
             QWidget {
                 background-color: #1E1E1E;
+                border: 1px solid #333333;
                 border-radius: 10px;
                 padding: 20px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             }
         """)
 
@@ -65,10 +65,12 @@ class LoginWidget(QWidget):
                 font-size: 14px;
                 background-color: #2E2E2E;
                 color: #FFFFFF;
+                max-width: 200px;
             }
         """)
         username_layout.addWidget(username_label)
         username_layout.addWidget(self.username_input)
+        username_layout.addStretch()
         form_layout.addLayout(username_layout)
 
         password_layout = QHBoxLayout()
@@ -86,13 +88,15 @@ class LoginWidget(QWidget):
                 font-size: 14px;
                 background-color: #2E2E2E;
                 color: #FFFFFF;
+                max-width: 200px;
             }
         """)
         password_layout.addWidget(password_label)
         password_layout.addWidget(self.password_input)
+        password_layout.addStretch()
         form_layout.addLayout(password_layout)
 
-        main_layout.addWidget(form_card)
+        main_layout.addWidget(form_card, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Buttons Card
         button_card = QWidget()
@@ -100,9 +104,9 @@ class LoginWidget(QWidget):
         button_card.setStyleSheet("""
             QWidget {
                 background-color: #1E1E1E;
+                border: 1px solid #333333;
                 border-radius: 10px;
                 padding: 20px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             }
         """)
 
@@ -116,7 +120,7 @@ class LoginWidget(QWidget):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 150px;
+                min-width: 120px;
             }
             QPushButton:hover {
                 background-color: #45a049;
@@ -138,7 +142,7 @@ class LoginWidget(QWidget):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 150px;
+                min-width: 120px;
             }
             QPushButton:hover {
                 background-color: #da190b;
@@ -149,9 +153,8 @@ class LoginWidget(QWidget):
         """)
         clear_button.clicked.connect(self.clear_fields)
         button_layout.addWidget(clear_button)
-
         button_layout.addStretch()
-        main_layout.addWidget(button_card)
+        main_layout.addWidget(button_card, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Toggle Contrast Card
         toggle_card = QWidget()
@@ -159,9 +162,9 @@ class LoginWidget(QWidget):
         toggle_card.setStyleSheet("""
             QWidget {
                 background-color: #1E1E1E;
+                border: 1px solid #333333;
                 border-radius: 10px;
                 padding: 20px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             }
         """)
         toggle_contrast_button = QPushButton("Toggle High Contrast")
@@ -174,7 +177,7 @@ class LoginWidget(QWidget):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 150px;
+                min-width: 120px;
             }
             QPushButton:hover {
                 background-color: #666666;
@@ -186,7 +189,7 @@ class LoginWidget(QWidget):
         toggle_contrast_button.clicked.connect(self.main_window.toggle_contrast)
         toggle_layout.addWidget(toggle_contrast_button)
         toggle_layout.addStretch()
-        main_layout.addWidget(toggle_card)
+        main_layout.addWidget(toggle_card, alignment=Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addStretch()
 

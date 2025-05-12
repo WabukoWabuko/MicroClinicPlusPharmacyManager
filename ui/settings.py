@@ -26,9 +26,9 @@ class SettingsWidget(QWidget):
         card.setStyleSheet("""
             QWidget {
                 background-color: #1E1E1E;
+                border: 1px solid #333333;
                 border-radius: 10px;
                 padding: 20px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             }
         """)
 
@@ -47,10 +47,12 @@ class SettingsWidget(QWidget):
                 font-size: 14px;
                 background-color: #2E2E2E;
                 color: #FFFFFF;
+                max-width: 200px;
             }
         """)
         clinic_layout.addWidget(clinic_label)
         clinic_layout.addWidget(self.clinic_input)
+        clinic_layout.addStretch()
         card_layout.addLayout(clinic_layout)
 
         # Logo
@@ -75,12 +77,12 @@ class SettingsWidget(QWidget):
                 background-color: #1565C0;
             }
         """)
-        self.logo_button.clicked.connect(self.choose_logo)
         self.logo_label = QLabel("No logo selected")
         self.logo_label.setStyleSheet("font-size: 12px; color: #FFFFFF;")
         logo_layout.addWidget(logo_label)
         logo_layout.addWidget(self.logo_button)
         logo_layout.addWidget(self.logo_label)
+        logo_layout.addStretch()
         card_layout.addLayout(logo_layout)
 
         # Currency symbol
@@ -98,10 +100,12 @@ class SettingsWidget(QWidget):
                 font-size: 14px;
                 background-color: #2E2E2E;
                 color: #FFFFFF;
+                max-width: 100px;
             }
         """)
         currency_layout.addWidget(currency_label)
         currency_layout.addWidget(self.currency_combo)
+        currency_layout.addStretch()
         card_layout.addLayout(currency_layout)
 
         # Load saved settings
@@ -122,6 +126,7 @@ class SettingsWidget(QWidget):
             }
         """)
         sync_layout.addWidget(self.sync_toggle)
+        sync_layout.addStretch()
         card_layout.addLayout(sync_layout)
 
         # Sync status
@@ -145,7 +150,7 @@ class SettingsWidget(QWidget):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 150px;
+                min-width: 120px;
             }
             QPushButton:hover {
                 background-color: #1976D2;
@@ -155,7 +160,7 @@ class SettingsWidget(QWidget):
             }
         """)
         sync_now_button.clicked.connect(self.manual_sync)
-        card_layout.addWidget(sync_now_button)
+        card_layout.addWidget(sync_now_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Sync history table
         self.sync_table = QTableWidget()
@@ -204,7 +209,7 @@ class SettingsWidget(QWidget):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 150px;
+                min-width: 120px;
             }
             QPushButton:hover {
                 background-color: #45a049;
@@ -226,7 +231,7 @@ class SettingsWidget(QWidget):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 150px;
+                min-width: 120px;
             }
             QPushButton:hover {
                 background-color: #666666;
@@ -241,7 +246,7 @@ class SettingsWidget(QWidget):
         card_layout.addLayout(button_layout)
 
         card_layout.addStretch()
-        main_layout.addWidget(card)
+        main_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
         main_layout.addStretch()
 
     def set_title(self, title):

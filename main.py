@@ -54,9 +54,9 @@ class MainWindow(QMainWindow):
         card.setStyleSheet("""
             QWidget {
                 background-color: #1E1E1E;
+                border: 1px solid #333333;
                 border-radius: 10px;
                 padding: 20px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             }
         """)
 
@@ -68,7 +68,7 @@ class MainWindow(QMainWindow):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 200px;
+                min-width: 180px;
                 margin: 5px 0;
             }
             QPushButton:hover {
@@ -79,48 +79,25 @@ class MainWindow(QMainWindow):
             }
         """
 
-        patient_button = QPushButton("Patient Management")
-        patient_button.setStyleSheet(button_style)
-        patient_button.setToolTip("Manage patient records")
-        patient_button.clicked.connect(self.show_patient_management)
-        card_layout.addWidget(patient_button)
-
-        inventory_button = QPushButton("Inventory Management")
-        inventory_button.setStyleSheet(button_style)
-        inventory_button.setToolTip("Manage drug inventory")
-        inventory_button.clicked.connect(self.show_inventory_management)
-        card_layout.addWidget(inventory_button)
-
-        prescription_button = QPushButton("Prescription Logging")
-        prescription_button.setStyleSheet(button_style)
-        prescription_button.setToolTip("Log prescriptions")
-        prescription_button.clicked.connect(self.show_prescription_logging)
-        card_layout.addWidget(prescription_button)
-
-        sales_button = QPushButton("Sales Management")
-        sales_button.setStyleSheet(button_style)
-        sales_button.setToolTip("Manage sales")
-        sales_button.clicked.connect(self.show_sales_management)
-        card_layout.addWidget(sales_button)
-
+        buttons = [
+            ("Patient Management", self.show_patient_management),
+            ("Inventory Management", self.show_inventory_management),
+            ("Prescription Logging", self.show_prescription_logging),
+            ("Sales Management", self.show_sales_management),
+        ]
         if self.current_user and self.current_user['role'] == 'admin':
-            user_button = QPushButton("User Management")
-            user_button.setStyleSheet(button_style)
-            user_button.setToolTip("Manage users (Admin only)")
-            user_button.clicked.connect(self.show_user_management)
-            card_layout.addWidget(user_button)
+            buttons.append(("User Management", self.show_user_management))
+        buttons.extend([
+            ("Settings", self.show_settings),
+            ("Reporting Dashboard", self.show_dashboard),
+        ])
 
-        settings_button = QPushButton("Settings")
-        settings_button.setStyleSheet(button_style)
-        settings_button.setToolTip("Configure application settings")
-        settings_button.clicked.connect(self.show_settings)
-        card_layout.addWidget(settings_button)
-
-        dashboard_button = QPushButton("Reporting Dashboard")
-        dashboard_button.setStyleSheet(button_style)
-        dashboard_button.setToolTip("View reports and analytics")
-        dashboard_button.clicked.connect(self.show_dashboard)
-        card_layout.addWidget(dashboard_button)
+        for text, action in buttons:
+            button = QPushButton(text)
+            button.setStyleSheet(button_style)
+            button.setToolTip(f"Navigate to {text.lower()}")
+            button.clicked.connect(action)
+            card_layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         contrast_button = QPushButton("Toggle High Contrast")
         contrast_button.setStyleSheet("""
@@ -131,7 +108,7 @@ class MainWindow(QMainWindow):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 200px;
+                min-width: 180px;
                 margin: 5px 0;
             }
             QPushButton:hover {
@@ -143,7 +120,7 @@ class MainWindow(QMainWindow):
         """)
         contrast_button.setToolTip("Toggle high contrast mode")
         contrast_button.clicked.connect(self.toggle_contrast)
-        card_layout.addWidget(contrast_button)
+        card_layout.addWidget(contrast_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         logout_button = QPushButton("Logout")
         logout_button.setStyleSheet("""
@@ -154,7 +131,7 @@ class MainWindow(QMainWindow):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 200px;
+                min-width: 180px;
                 margin: 5px 0;
             }
             QPushButton:hover {
@@ -166,10 +143,10 @@ class MainWindow(QMainWindow):
         """)
         logout_button.setToolTip("Log out of the application")
         logout_button.clicked.connect(self.show_login)
-        card_layout.addWidget(logout_button)
+        card_layout.addWidget(logout_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         card_layout.addStretch()
-        menu_layout.addWidget(card)
+        menu_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
         self.content_layout.addWidget(menu_widget)
 
     def clear_content(self):
@@ -226,7 +203,7 @@ class MainWindow(QMainWindow):
             self.setStyleSheet("background-color: #000000; color: #FFFFFF;")
         else:
             self.setStyleSheet("")
-        self.show_menu()
+        self.update()
 
     def set_title(self, title):
         self.setWindowTitle(f"MicroClinic Plus Pharmacy Manager - {title}")
