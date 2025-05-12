@@ -10,7 +10,7 @@ import json
 class Database:
     def __init__(self):
         self.db_path = "database/clinic.db"
-        self.schema_path = "database/schema.sql"
+        self.schema_path = "db/schema.sql"
         load_dotenv()
         self.supabase_url = os.getenv("SUPABASE_URL")
         self.supabase_key = os.getenv("SUPABASE_KEY")
@@ -47,13 +47,26 @@ class Database:
         conn.close()
 
     def table_exists(self, table_name):
-        """Check if a table exists in the database."""
+        """Check if a table exists in the local SQLite database."""
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?;", (table_name,))
         exists = cursor.fetchone() is not None
         conn.close()
         return exists
+
+    def supabase_table_exists(self, table_name):
+        """Check if a table exists in Supabase."""
+        if not self.supabase:
+            return False
+        try:
+            # Attempt a lightweight query to check table existence
+            self.supabase.table(table_name).select("*").limit(1).execute()
+            return True
+        except Exception as e:
+            if '42P01' in str(e):  # PostgreSQL undefined_table error
+                return False
+            raise e
 
     def connect(self):
         """Connect to the local SQLite database."""
@@ -102,6 +115,9 @@ class Database:
             operation = item['operation']
             record_id = item['record_id']
             data = json.loads(item['data']) if item['data'] else {}
+            if not self.supabase_table_exists(table_name):
+                print(f"Error: Supabase table '{table_name}' does not exist. Skipping sync for queue_id {item['queue_id']}.")
+                continue
             try:
                 if operation == 'INSERT':
                     response = self.supabase.table(table_name).insert(data).execute()
@@ -122,8 +138,15 @@ class Database:
         
         # Pull updates from Supabase
         for table in ['patients', 'drugs', 'prescriptions', 'sales', 'sale_items']:
+            if not self.supabase_table_exists(table):
+                print(f"Error: Supabase table '{table}' does not exist. Skipping pull.")
+                continue
             local_data = {row[f"{table[:-1]}_id"]: dict(row) for row in conn.execute(f"SELECT * FROM {table}").fetchall()}
-            remote_data = self.supabase.table(table).select("*").execute().data
+            try:
+                remote_data = self.supabase.table(table).select("*").execute().data
+            except Exception as e:
+                print(f"Error fetching Supabase table '{table}': {e}")
+                continue
             for remote_row in remote_data:
                 remote_id = remote_row[f"{table[:-1]}_id"]
                 remote_updated_at = datetime.fromisoformat(remote_row['updated_at'].replace('Z', '+00:00'))
