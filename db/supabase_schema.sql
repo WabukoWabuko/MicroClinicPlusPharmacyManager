@@ -5,6 +5,18 @@ DROP TABLE IF EXISTS sales;
 DROP TABLE IF EXISTS prescriptions;
 DROP TABLE IF EXISTS drugs;
 DROP TABLE IF EXISTS patients;
+DROP TABLE IF EXISTS suppliers;
+
+-- Users table: Stores admin and staff accounts
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'staff')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP WITH TIME ZONE
+);
 
 -- Patients table: Stores patient information
 CREATE TABLE patients (
@@ -15,8 +27,8 @@ CREATE TABLE patients (
     gender TEXT CHECK (gender IN ('Male', 'Female', 'Other')),
     contact TEXT NOT NULL,
     medical_history TEXT,
-    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    registration_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_synced BOOLEAN DEFAULT FALSE,
     sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed'))
 );
@@ -29,8 +41,25 @@ CREATE TABLE drugs (
     batch_number TEXT NOT NULL,
     expiry_date TEXT NOT NULL,
     price REAL NOT NULL CHECK (price >= 0),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_synced BOOLEAN DEFAULT FALSE,
+    sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed'))
+);
+
+-- Suppliers table: Stores supplier information
+CREATE TABLE suppliers (
+    supplier_id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    phone TEXT,
+    email TEXT,
+    address TEXT,
+    products_supplied TEXT,
+    last_delivery_date TEXT,
+    responsible_person TEXT,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_synced BOOLEAN DEFAULT FALSE,
     sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed'))
 );
@@ -47,11 +76,12 @@ CREATE TABLE prescriptions (
     frequency TEXT NOT NULL,
     duration TEXT NOT NULL,
     quantity_prescribed INTEGER NOT NULL CHECK (quantity_prescribed > 0),
-    prescription_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    prescription_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_synced BOOLEAN DEFAULT FALSE,
     sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed')),
     FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL,
     FOREIGN KEY (drug_id) REFERENCES drugs(drug_id) ON DELETE CASCADE
 );
 
@@ -61,11 +91,13 @@ CREATE TABLE sales (
     patient_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     total_price REAL NOT NULL CHECK (total_price >= 0),
-    sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sale_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    mode_of_payment TEXT NOT NULL CHECK (mode_of_payment IN ('Cash', 'Card', 'Mobile')),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_synced BOOLEAN DEFAULT FALSE,
     sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed')),
-    FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE
+    FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
 -- Sale Items table: Stores individual items in a sale
@@ -75,7 +107,7 @@ CREATE TABLE sale_items (
     drug_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     price REAL NOT NULL CHECK (price >= 0),
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_synced BOOLEAN DEFAULT FALSE,
     sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed')),
     FOREIGN KEY (sale_id) REFERENCES sales(sale_id) ON DELETE CASCADE,
@@ -89,13 +121,15 @@ CREATE TABLE sync_queue (
     operation TEXT NOT NULL CHECK (operation IN ('INSERT', 'UPDATE', 'DELETE')),
     record_id INTEGER NOT NULL,
     data JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'synced', 'failed'))
 );
 
 -- Indexes for performance
 CREATE INDEX idx_patients_contact ON patients(contact);
+CREATE INDEX idx_patients_name ON patients(first_name, last_name);
 CREATE INDEX idx_drugs_name ON drugs(name);
+CREATE INDEX idx_suppliers_name ON suppliers(name);
 CREATE INDEX idx_prescriptions_patient_id ON prescriptions(patient_id);
 CREATE INDEX idx_prescriptions_drug_id ON prescriptions(drug_id);
 CREATE INDEX idx_sales_patient_id ON sales(patient_id);
