@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Clinic Receipt</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+      color: #000;
+    }
+    .header, .footer {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .header h2 {
+      margin: 0;
+    }
+    .info, .summary {
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 8px;
+      text-align: left;
+    }
+    .right {
+      text-align: right;
+    }
+    .bold {
+      font-weight: bold;
+    }
+    .summary td {
+      border: none;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h2>Wabuko Health Clinic</h2>
+    <p>123 Moi Avenue, Nairobi, Kenya</p>
+    <p>Phone: +234 700 123 4567 | Email: info@wabukohealth.ng</p>
+    <p>Clinic License No: CL-987654321</p>
+  </div>
+
+  <hr>
+
+  <div class="info">
+    <p><strong>Receipt ID:</strong> RCPT-20250512-0001</p>
+    <p><strong>Date:</strong> 12-May-2025 &nbsp;&nbsp;&nbsp; <strong>Time:</strong> 10:34 AM</p>
+    <p><strong>Issued By:</strong> Dr. Wabuko Wabuko</p>
+  </div>
+
+  <div class="info">
+    <p><strong>Patient Name:</strong> John Doe</p>
+    <p><strong>Patient ID:</strong> PT-00123</p>
+    <p><strong>Date of Birth:</strong> 14-Mar-1990</p>
+  </div>
+
+  <div>
+    <h3>Items / Services</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Item/Service</th>
+          <th>Qty</th>
+          <th>Unit Price (KSh.)</th>
+          <th>Total (KSh.)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>General Consultation</td>
+          <td>1</td>
+          <td>5,000</td>
+          <td>5,000</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Amoxicillin 500mg (Capsule)</td>
+          <td>10</td>
+          <td>100</td>
+          <td>1,000</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Malaria Rapid Test</td>
+          <td>1</td>
+          <td>1,500</td>
+          <td>1,500</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="summary">
+    <table>
+      <tr>
+        <td class="right bold">Subtotal:</td>
+        <td class="right">KSh. 7,500</td>
+      </tr>
+      <tr>
+        <td class="right bold">Discount:</td>
+        <td class="right">KSh. 500</td>
+      </tr>
+      <tr>
+        <td class="right bold">Tax (7.5% VAT):</td>
+        <td class="right">KSh. 525</td>
+      </tr>
+      <tr>
+        <td class="right bold">Insurance Covered:</td>
+        <td class="right">KSh. 2,000</td>
+      </tr>
+      <tr>
+        <td class="right bold">Total Payable:</td>
+        <td class="right bold">KSh. 6,025</td>
+      </tr>
+      <tr>
+        <td class="right bold">Amount Paid:</td>
+        <td class="right">KSh. 6,025</td>
+      </tr>
+      <tr>
+        <td class="right bold">Balance Due:</td>
+        <td class="right">KSh. 0</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="footer">
+    <p>Payment Method: Cash</p>
+    <p>Insurance Provider: NHIF Kenya</p>
+    <br>
+    <p>Thank you for trusting Wabuko Health Clinic!</p>
+    <p><em>Powered by Wabuko Software</em></p>
+  </div>
+
+</body>
+</html>
+

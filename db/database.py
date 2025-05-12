@@ -412,10 +412,15 @@ class Database:
         })
 
     def get_sale_items(self, sale_id):
-        """Retrieve sale items for a sale."""
+        """Retrieve sale items for a sale with drug names."""
         conn = self.connect()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM sale_items WHERE sale_id = ?", (sale_id,))
+        cursor.execute("""
+            SELECT si.*, d.name
+            FROM sale_items si
+            JOIN drugs d ON si.drug_id = d.drug_id
+            WHERE si.sale_id = ?
+        """, (sale_id,))
         items = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return items

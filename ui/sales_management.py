@@ -300,7 +300,7 @@ class SalesManagementWidget(QWidget):
         try:
             sale_id = self.db.add_sale(
                 patient_id=patient_id,
-                user_id=self.main_window.current_user['user_id],
+                user_id=self.main_window.current_user['user_id'],
                 total_price=total_price
             )
             for item in self.sale_items:

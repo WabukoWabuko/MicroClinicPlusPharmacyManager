@@ -313,7 +313,7 @@ class PrescriptionLoggingWidget(QWidget):
                 dosage=dosage,
                 frequency=frequency,
                 duration=duration,
-                quantity=quantity_val
+                quantity_prescribed=quantity_val
             )
             QMessageBox.information(self, "Success", "Prescription added successfully.")
             self.load_data()
