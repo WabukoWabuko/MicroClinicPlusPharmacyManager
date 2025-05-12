@@ -32,6 +32,7 @@ class Database:
             conn.executescript(schema)
             conn.commit()
             conn.close()
+
         # Create sync_queue table in SQLite if not exists
         conn = self.connect()
         conn.execute("""
@@ -43,6 +44,24 @@ class Database:
                 data TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 status TEXT DEFAULT 'pending'
+            )
+        """)
+        # Create suppliers table in SQLite if not exists
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS suppliers (
+                supplier_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                phone TEXT,
+                email TEXT,
+                address TEXT,
+                products_supplied TEXT,
+                last_delivery_date TEXT,
+                responsible_person TEXT,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_synced INTEGER DEFAULT 0,
+                sync_status TEXT DEFAULT 'pending'
             )
         """)
         conn.commit()
@@ -171,7 +190,7 @@ class Database:
                 conn.execute("UPDATE sync_queue SET status = 'failed' WHERE queue_id = ?", (item['queue_id'],))
                 print(f"Sync error for {table_name} {operation}: {e}")
         
-        for table in ['patients', 'drugs', 'prescriptions', 'sales', 'sale_items']:
+        for table in ['patients', 'drugs', 'prescriptions', 'sales', 'sale_items', 'suppliers']:
             if not self.supabase_table_exists(table):
                 print(f"Error: Supabase table '{table}' does not exist. Skipping pull.")
                 continue
@@ -220,6 +239,8 @@ class Database:
                 details = f"Total: ${data['total_price']}"
             elif table_name == 'sale_items' and 'quantity' in data:
                 details = f"Quantity: {data['quantity']}"
+            elif table_name == 'suppliers' and 'name' in data:
+                details = f"Supplier: {data['name']}"
             history.append({
                 'table_name': table_name,
                 'operation': item['operation'],
@@ -247,7 +268,23 @@ class Database:
         """Retrieve all patients."""
         conn = self.connect()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM patients")
+        cursor.execute("SELECT * FROM patients ORDER BY first_name, last_name")
+        patients = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return patients
+
+    def get_top_patients(self, limit=5):
+        """Retrieve the top patients by prescription count."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.*, COUNT(pr.prescription_id) as prescription_count
+            FROM patients p
+            LEFT JOIN prescriptions pr ON p.patient_id = pr.patient_id
+            GROUP BY p.patient_id
+            ORDER BY prescription_count DESC, p.first_name, p.last_name
+            LIMIT ?
+        """, (limit,))
         patients = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return patients
@@ -284,7 +321,24 @@ class Database:
         """Retrieve all drugs."""
         conn = self.connect()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM drugs")
+        cursor.execute("SELECT * FROM drugs ORDER BY name")
+        drugs = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return drugs
+
+    def get_top_drugs(self, limit=5):
+        """Retrieve the top drugs by prescription and sale count."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT d.*,
+                   (COALESCE((SELECT SUM(pr.quantity_prescribed) FROM prescriptions pr WHERE pr.drug_id = d.drug_id), 0) +
+                    COALESCE((SELECT SUM(si.quantity) FROM sale_items si WHERE si.drug_id = d.drug_id), 0)) as usage_count
+            FROM drugs d
+            GROUP BY d.drug_id
+            ORDER BY usage_count DESC, d.name
+            LIMIT ?
+        """, (limit,))
         drugs = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return drugs
@@ -332,6 +386,34 @@ class Database:
             'is_synced': False, 'sync_status': 'pending'
         })
 
+    def reduce_drug_stock(self, drug_id, quantity):
+        """Reduce the stock of a drug by the specified quantity."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT quantity FROM drugs WHERE drug_id = ?", (drug_id,))
+        drug = cursor.fetchone()
+        if not drug:
+            conn.close()
+            raise ValueError("Drug not found.")
+        current_quantity = drug['quantity']
+        if current_quantity < quantity:
+            conn.close()
+            raise ValueError("Insufficient stock for this drug.")
+        new_quantity = current_quantity - quantity
+        cursor.execute("""
+            UPDATE drugs SET quantity = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
+            WHERE drug_id = ?
+        """, (new_quantity, datetime.now(), drug_id))
+        conn.commit()
+        conn.close()
+        self.queue_sync_operation('drugs', 'UPDATE', drug_id, {
+            'drug_id': drug_id, 'quantity': new_quantity, 'updated_at': datetime.now().isoformat(),
+            'is_synced': False, 'sync_status': 'pending'
+        })
+        if new_quantity < 10:
+            return f"Warning: Stock for drug ID {drug_id} is low ({new_quantity} units remaining)."
+        return None
+
     def delete_drug(self, drug_id):
         """Delete a drug."""
         conn = self.connect()
@@ -351,7 +433,10 @@ class Database:
         return prescriptions
 
     def add_prescription(self, patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed):
-        """Add a new prescription."""
+        """Add a new prescription and reduce drug stock."""
+        # Reduce stock before adding the prescription
+        stock_warning = self.reduce_drug_stock(drug_id, quantity_prescribed)
+
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
@@ -368,7 +453,7 @@ class Database:
             'prescription_date': datetime.now().isoformat(), 'updated_at': datetime.now().isoformat(),
             'is_synced': False, 'sync_status': 'pending'
         })
-        return prescription_id
+        return prescription_id, stock_warning
 
     def get_all_sales(self):
         """Retrieve all sales."""
@@ -398,7 +483,9 @@ class Database:
         return sale_id
 
     def add_sale_item(self, sale_id, drug_id, quantity, price):
-        """Add a sale item."""
+        """Add a sale item and reduce drug stock."""
+        stock_warning = self.reduce_drug_stock(drug_id, quantity)
+
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
@@ -413,6 +500,7 @@ class Database:
             'quantity': quantity, 'price': price, 'updated_at': datetime.now().isoformat(),
             'is_synced': False, 'sync_status': 'pending'
         })
+        return stock_warning
 
     def get_sale_items(self, sale_id):
         """Retrieve sale items for a sale with drug names."""
@@ -439,6 +527,64 @@ class Database:
             sale['items'] = self.get_sale_items(sale_id)
         conn.close()
         return sale
+
+    def get_all_suppliers(self):
+        """Retrieve all suppliers."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM suppliers ORDER BY name")
+        suppliers = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return suppliers
+
+    def add_supplier(self, name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes):
+        """Add a new supplier."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO suppliers (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')
+        """, (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes))
+        supplier_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        self.queue_sync_operation('suppliers', 'INSERT', supplier_id, {
+            'supplier_id': supplier_id, 'name': name, 'phone': phone, 'email': email,
+            'address': address, 'products_supplied': products_supplied,
+            'last_delivery_date': last_delivery_date, 'responsible_person': responsible_person,
+            'notes': notes, 'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat(), 'is_synced': False, 'sync_status': 'pending'
+        })
+        return supplier_id
+
+    def get_supplier(self, supplier_id):
+        """Retrieve a supplier by ID."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM suppliers WHERE supplier_id = ?", (supplier_id,))
+        supplier = cursor.fetchone()
+        conn.close()
+        return dict(supplier) if supplier else None
+
+    def update_supplier(self, supplier_id, name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes):
+        """Update a supplier's details."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE suppliers
+            SET name = ?, phone = ?, email = ?, address = ?, products_supplied = ?, last_delivery_date = ?,
+                responsible_person = ?, notes = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
+            WHERE supplier_id = ?
+        """, (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, datetime.now(), supplier_id))
+        conn.commit()
+        conn.close()
+        self.queue_sync_operation('suppliers', 'UPDATE', supplier_id, {
+            'supplier_id': supplier_id, 'name': name, 'phone': phone, 'email': email,
+            'address': address, 'products_supplied': products_supplied,
+            'last_delivery_date': last_delivery_date, 'responsible_person': responsible_person,
+            'notes': notes, 'updated_at': datetime.now().isoformat(),
+            'is_synced': False, 'sync_status': 'pending'
+        })
 
     def get_low_stock_drugs(self):
         """Retrieve drugs with low stock."""
