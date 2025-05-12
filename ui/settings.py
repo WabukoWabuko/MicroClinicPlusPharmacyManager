@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox, QPushButton, QMessageBox, QTableWidget, QTableWidgetItem
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox, QPushButton, QMessageBox, QTableWidget, QTableWidgetItem, QLineEdit, QComboBox, QFileDialog
 from PyQt6.QtCore import Qt
 
 class SettingsWidget(QWidget):
@@ -11,6 +11,80 @@ class SettingsWidget(QWidget):
     def init_ui(self):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
+
+        # Clinic name
+        clinic_layout = QHBoxLayout()
+        clinic_label = QLabel("Clinic Name:")
+        clinic_label.setStyleSheet("font-size: 14px;")
+        self.clinic_input = QLineEdit()
+        self.clinic_input.setPlaceholderText("Enter clinic name")
+        self.clinic_input.setToolTip("Name of the clinic for receipts")
+        self.clinic_input.setStyleSheet("""
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+        """)
+        clinic_layout.addWidget(clinic_label)
+        clinic_layout.addWidget(self.clinic_input)
+        main_layout.addLayout(clinic_layout)
+
+        # Logo
+        logo_layout = QHBoxLayout()
+        logo_label = QLabel("Receipt Logo:")
+        logo_label.setStyleSheet("font-size: 14px;")
+        self.logo_button = QPushButton("Choose Logo")
+        self.logo_button.setToolTip("Select a PNG or JPG logo for receipts")
+        self.logo_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                padding: 6px 12px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #1565C0;
+            }
+        """)
+        self.logo_button.clicked.connect(self.choose_logo)
+        self.logo_label = QLabel("No logo selected")
+        self.logo_label.setStyleSheet("font-size: 12px; color: #555555;")
+        logo_layout.addWidget(logo_label)
+        logo_layout.addWidget(self.logo_button)
+        logo_layout.addWidget(self.logo_label)
+        main_layout.addLayout(logo_layout)
+
+        # Currency symbol
+        currency_layout = QHBoxLayout()
+        currency_label = QLabel("Currency Symbol:")
+        currency_label.setStyleSheet("font-size: 14px;")
+        self.currency_combo = QComboBox()
+        self.currency_combo.addItems(["KSh", "$", "£", "€", "₹", "¥", "A$"])
+        self.currency_combo.setToolTip("Select currency symbol for receipts")
+        self.currency_combo.setStyleSheet("""
+            QComboBox {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+        """)
+        currency_layout.addWidget(currency_label)
+        currency_layout.addWidget(self.currency_combo)
+        main_layout.addLayout(currency_layout)
+
+        # Load saved settings
+        config = self.db.load_config()
+        self.clinic_input.setText(config["clinic_name"])
+        self.logo_label.setText(config["logo_path"] if config["logo_path"] else "No logo selected")
+        self.currency_combo.setCurrentText(config["currency_symbol"])
 
         # Sync toggle
         sync_layout = QHBoxLayout()
@@ -80,12 +154,12 @@ class SettingsWidget(QWidget):
         self.sync_table.setAlternatingRowColors(True)
         self.sync_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.sync_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
-        self.sync_table.setColumnWidth(0, 100)  # Table
-        self.sync_table.setColumnWidth(1, 80)   # Operation
-        self.sync_table.setColumnWidth(2, 80)   # Record ID
-        self.sync_table.setColumnWidth(3, 80)   # Status
-        self.sync_table.setColumnWidth(4, 150)  # Timestamp
-        self.sync_table.setColumnWidth(5, 200)  # Details
+        self.sync_table.setColumnWidth(0, 100)
+        self.sync_table.setColumnWidth(1, 80)
+        self.sync_table.setColumnWidth(2, 80)
+        self.sync_table.setColumnWidth(3, 80)
+        self.sync_table.setColumnWidth(4, 150)
+        self.sync_table.setColumnWidth(5, 200)
         self.update_sync_table()
         main_layout.addWidget(self.sync_table)
 
@@ -135,6 +209,12 @@ class SettingsWidget(QWidget):
 
         main_layout.addStretch()
 
+    def choose_logo(self):
+        """Open file dialog to choose a logo image."""
+        file_path, _ = QFileDialog.getOpenFileName(self, "Choose Logo", "", "Images (*.png *.jpg *.jpeg)")
+        if file_path:
+            self.logo_label.setText(file_path)
+
     def get_sync_status(self):
         """Get the current sync status."""
         if not self.db.supabase:
@@ -162,14 +242,42 @@ class SettingsWidget(QWidget):
 
     def save_settings(self):
         """Save settings and update sync status."""
+        # Validate clinic name
+        clinic_name = self.clinic_input.text().strip()
+        if not clinic_name:
+            QMessageBox.warning(self, "Input Error", "Clinic name cannot be empty.")
+            return
+        if len(clinic_name) > 100:
+            QMessageBox.warning(self, "Input Error", "Clinic name must be 100 characters or less.")
+            return
+
+        # Validate logo path
+        logo_path = self.logo_label.text()
+        if logo_path != "No logo selected" and not os.path.exists(logo_path):
+            QMessageBox.warning(self, "Input Error", "Selected logo file does not exist.")
+            return
+
+        # Save config
+        config = {
+            "clinic_name": clinic_name,
+            "logo_path": logo_path if logo_path != "No logo selected" else "",
+            "currency_symbol": self.currency_combo.currentText(),
+            "sync_enabled": self.sync_toggle.isChecked()
+        }
+        self.db.save_config(config)
+        self.main_window.config = config
+
+        # Handle sync toggle
         was_enabled = self.db.sync_enabled
         self.db.toggle_sync(self.sync_toggle.isChecked())
         if self.sync_toggle.isChecked() and not was_enabled:
             QMessageBox.information(self, "Sync", "Cloud sync enabled. Data will sync automatically when online.")
         elif not self.sync_toggle.isChecked() and was_enabled:
             QMessageBox.information(self, "Sync", "Cloud sync disabled.")
+        
         self.status_label.setText(self.get_sync_status())
         self.update_sync_table()
+        QMessageBox.information(self, "Settings", "Settings saved successfully.")
 
     def update_sync_table(self):
         """Update the sync history table."""

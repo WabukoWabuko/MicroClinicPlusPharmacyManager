@@ -11,6 +11,7 @@ class Database:
     def __init__(self):
         self.db_path = "database/clinic.db"
         self.schema_path = "db/schema.sql"
+        self.config_path = "database/config.json"
         load_dotenv()
         self.supabase_url = os.getenv("SUPABASE_URL")
         self.supabase_key = os.getenv("SUPABASE_KEY")
@@ -20,6 +21,7 @@ class Database:
         if self.supabase_url and self.supabase_key:
             self.supabase = create_client(self.supabase_url, self.supabase_key)
         self.init_database()
+        self.load_config()
 
     def init_database(self):
         """Initialize the local SQLite database with schema.sql."""
@@ -46,6 +48,34 @@ class Database:
         conn.commit()
         conn.close()
 
+    def load_config(self):
+        """Load settings from config.json."""
+        default_config = {
+            "clinic_name": "MicroClinic",
+            "logo_path": "",
+            "currency_symbol": "KSh",
+            "sync_enabled": False
+        }
+        try:
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r') as f:
+                    config = json.load(f)
+                    default_config.update(config)
+            self.sync_enabled = default_config["sync_enabled"]
+            return default_config
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            return default_config
+
+    def save_config(self, config):
+        """Save settings to config.json."""
+        try:
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+            with open(self.config_path, 'w') as f:
+                json.dump(config, f, indent=4)
+        except Exception as e:
+            print(f"Error saving config: {e}")
+
     def table_exists(self, table_name):
         """Check if a table exists in the local SQLite database."""
         conn = self.connect()
@@ -60,11 +90,10 @@ class Database:
         if not self.supabase:
             return False
         try:
-            # Attempt a lightweight query to check table existence
             self.supabase.table(table_name).select("*").limit(1).execute()
             return True
         except Exception as e:
-            if '42P01' in str(e):  # PostgreSQL undefined_table error
+            if '42P01' in str(e):
                 return False
             raise e
 
@@ -83,8 +112,11 @@ class Database:
             return False
 
     def toggle_sync(self, enabled):
-        """Enable or disable cloud sync."""
+        """Enable or disable cloud sync and save to config."""
         self.sync_enabled = enabled
+        config = self.load_config()
+        config["sync_enabled"] = enabled
+        self.save_config(config)
         if enabled and self.is_online():
             self.sync_data()
 
@@ -136,7 +168,6 @@ class Database:
                 conn.execute("UPDATE sync_queue SET status = 'failed' WHERE queue_id = ?", (item['queue_id'],))
                 print(f"Sync error for {table_name} {operation}: {e}")
         
-        # Pull updates from Supabase
         for table in ['patients', 'drugs', 'prescriptions', 'sales', 'sale_items']:
             if not self.supabase_table_exists(table):
                 print(f"Error: Supabase table '{table}' does not exist. Skipping pull.")
@@ -152,12 +183,10 @@ class Database:
                 remote_updated_at = datetime.fromisoformat(remote_row['updated_at'].replace('Z', '+00:00'))
                 local_row = local_data.get(remote_id)
                 if not local_row:
-                    # Insert new remote record locally
                     cols = ', '.join(remote_row.keys())
                     placeholders = ', '.join('?' for _ in remote_row)
                     conn.execute(f"INSERT INTO {table} ({cols}) VALUES ({placeholders})", list(remote_row.values()))
                 elif datetime.fromisoformat(local_row['updated_at'].replace('Z', '+00:00')) < remote_updated_at:
-                    # Update local with newer remote
                     updates = ', '.join(f"{k} = ?" for k in remote_row.keys() if k != f"{table[:-1]}_id")
                     conn.execute(f"UPDATE {table} SET {updates} WHERE {table[:-1]}_id = ?", 
                                  list(remote_row.values())[:-1] + [remote_id])
