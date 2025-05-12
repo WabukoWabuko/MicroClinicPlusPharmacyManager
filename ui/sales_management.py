@@ -62,7 +62,7 @@ class SalesManagementWidget(QWidget):
                 font-size: 14px;
             }
             QLineEdit:focus {
-                border/gu: 1px solid #4CAF50;
+                border: 1px solid #4CAF50;
             }
         """)
 
@@ -300,10 +300,16 @@ class SalesManagementWidget(QWidget):
         try:
             sale_id = self.db.add_sale(
                 patient_id=patient_id,
-                user_id=self.main_window.current_user['user_id'],
-                total_price=total_price,
-                sale_items=self.sale_items
+                user_id=self.main_window.current_user['user_id],
+                total_price=total_price
             )
+            for item in self.sale_items:
+                self.db.add_sale_item(
+                    sale_id=sale_id,
+                    drug_id=item['drug_id'],
+                    quantity=item['quantity'],
+                    price=item['price']
+                )
             QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
             self.load_data()
             self.clear_sale_items()
