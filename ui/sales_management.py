@@ -18,6 +18,12 @@ class SalesManagementWidget(QWidget):
         self.main_window = main_window
         self.db = Database()
         self.sale_items = []
+        # Exchange rates (KSh as base currency)
+        self.exchange_rates = {
+            "KSh": 1.0,      # Kenyan Shilling
+            "USD": 0.0077,   # US Dollar
+            "EUR": 0.0072    # Euro
+        }
         self.init_ui()
 
     def init_ui(self):
@@ -69,6 +75,25 @@ class SalesManagementWidget(QWidget):
                 border: 1px solid #4CAF50;
             }
         """)
+        # Currency selection
+        self.currency_combo = QComboBox()
+        self.currency_combo.addItems(self.exchange_rates.keys())
+        self.currency_combo.setToolTip("Select currency for the sale")
+        self.currency_combo.setStyleSheet("""
+            QComboBox {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QComboBox:focus {
+                border: 1px solid #4CAF50;
+            }
+        """)
+        # Load saved currency from config, default to KSh
+        saved_currency = self.main_window.config.get("sales_currency", "KSh")
+        self.currency_combo.setCurrentText(saved_currency)
+        self.currency_combo.currentTextChanged.connect(self.save_currency)
 
         left_form.addWidget(QLabel("Patient:"))
         left_form.addWidget(self.patient_combo)
@@ -76,6 +101,8 @@ class SalesManagementWidget(QWidget):
         right_form.addWidget(self.drug_combo)
         right_form.addWidget(QLabel("Quantity:"))
         right_form.addWidget(self.quantity_input)
+        right_form.addWidget(QLabel("Currency:"))
+        right_form.addWidget(self.currency_combo)
 
         form_layout.addLayout(left_form)
         form_layout.addLayout(right_form)
@@ -229,6 +256,10 @@ class SalesManagementWidget(QWidget):
 
         self.load_data()
 
+    def save_currency(self):
+        selected_currency = self.currency_combo.currentText()
+        self.main_window.config["sales_currency"] = selected_currency
+
     def load_data(self):
         patients = self.db.get_all_patients()
         self.patient_combo.clear()
@@ -254,6 +285,8 @@ class SalesManagementWidget(QWidget):
     def add_sale_item(self):
         drug_id = self.drug_combo.currentData()
         quantity = self.quantity_input.text().strip()
+        selected_currency = self.currency_combo.currentText()
+        rate = self.exchange_rates[selected_currency]
 
         if not drug_id or self.drug_combo.currentText() == "Select Drug":
             QMessageBox.warning(self, "Error", "Please select a drug.")
@@ -271,18 +304,22 @@ class SalesManagementWidget(QWidget):
             return
 
         drug = self.db.get_drug(drug_id)
+        price_in_ksh = drug['price'] * quantity_val
+        converted_price = price_in_ksh * rate
+
         self.sale_items.append({
             'drug_id': drug_id,
             'name': drug['name'],
             'quantity': quantity_val,
-            'price': drug['price'] * quantity_val
+            'price': price_in_ksh,  # Store in KSh for database
+            'display_price': converted_price  # For display in selected currency
         })
 
         self.sale_items_table.setRowCount(len(self.sale_items))
         for row, item in enumerate(self.sale_items):
             self.sale_items_table.setItem(row, 0, QTableWidgetItem(item['name']))
             self.sale_items_table.setItem(row, 1, QTableWidgetItem(str(item['quantity'])))
-            self.sale_items_table.setItem(row, 2, QTableWidgetItem(f"{item['price']:.2f}"))
+            self.sale_items_table.setItem(row, 2, QTableWidgetItem(f"{item['display_price']:.2f} {selected_currency}"))
 
         self.quantity_input.clear()
 
@@ -300,7 +337,7 @@ class SalesManagementWidget(QWidget):
             QMessageBox.warning(self, "Error", "No items added to sale.")
             return
 
-        total_price = sum(item['price'] for item in self.sale_items)
+        total_price = sum(item['price'] for item in self.sale_items)  # Total in KSh
         try:
             sale_id = self.db.add_sale(
                 patient_id=patient_id,
@@ -312,7 +349,7 @@ class SalesManagementWidget(QWidget):
                     sale_id=sale_id,
                     drug_id=item['drug_id'],
                     quantity=item['quantity'],
-                    price=item['price']
+                    price=item['price']  # Store in KSh
                 )
             QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
             self.load_data()
@@ -321,7 +358,7 @@ class SalesManagementWidget(QWidget):
             QMessageBox.warning(self, "Error", str(e))
 
     def generate_receipt(self):
-        """Generate a slick PDF receipt with clean styling."""
+        """Generate a slick PDF receipt with clean styling and selected currency."""
         row = self.sales_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Error", "Select a sale to generate receipt.")
@@ -363,6 +400,9 @@ class SalesManagementWidget(QWidget):
         clinic_name = self.main_window.config.get("clinic_name", "MicroClinic")
         contact_details = self.main_window.config.get("contact_details", "")
         tax_rate = self.main_window.config.get("tax_rate", 0) / 100.0  # Convert percentage to decimal
+        selected_currency = self.main_window.config.get("sales_currency", "KSh")
+        rate = self.exchange_rates[selected_currency]
+        currency_symbol = selected_currency  # Using currency code as symbol for simplicity
 
         # Header
         elements.append(Paragraph(clinic_name, header_style))
@@ -378,7 +418,8 @@ class SalesManagementWidget(QWidget):
             ["Receipt ID:", receipt_id],
             ["Date:", sale['sale_date'][:10]],
             ["Time:", sale['sale_date'][11:16]],
-            ["Issued By:", self.main_window.current_user['username']]
+            ["Issued By:", self.main_window.current_user['username']],
+            ["Currency:", selected_currency]
         ]
         meta_table = Table(meta_data, colWidths=[40*mm, doc.width-40*mm])
         meta_table.setStyle(TableStyle([
@@ -409,13 +450,15 @@ class SalesManagementWidget(QWidget):
         # Items Table
         data = [["#", "Item / Service", "Qty", "Unit Price", "Total"]]
         for i, item in enumerate(sale_items, 1):
-            unit_price = item['price'] / item['quantity'] if item['quantity'] else 0
+            unit_price_ksh = item['price'] / item['quantity'] if item['quantity'] else 0
+            unit_price = unit_price_ksh * rate
+            total_price = item['price'] * rate
             data.append([
                 str(i),
                 item['name'],
                 str(item['quantity']),
-                f"KSh. {unit_price:,.2f}",
-                f"KSh. {item['price']:,.2f}"
+                f"{currency_symbol} {unit_price:,.2f}",
+                f"{currency_symbol} {total_price:,.2f}"
             ])
 
         items_table = Table(data, colWidths=[
@@ -437,14 +480,15 @@ class SalesManagementWidget(QWidget):
         elements.append(Spacer(1, 12))
 
         # Summary Calculations
-        subtotal = sum(it['price'] for it in sale_items)
+        subtotal_ksh = sum(it['price'] for it in sale_items)
+        subtotal = subtotal_ksh * rate
         tax = subtotal * tax_rate
         total = subtotal + tax
 
         summary = [
-            ["Subtotal:", f"KSh. {subtotal:,.2f}"],
-            [f"Tax ({tax_rate*100}%):", f"KSh. {tax:,.2f}"],
-            ["Total Payable:", f"KSh. {total:,.2f}"]
+            ["Subtotal:", f"{currency_symbol} {subtotal:,.2f}"],
+            [f"Tax ({tax_rate*100}%):", f"{currency_symbol} {tax:,.2f}"],
+            ["Total Payable:", f"{currency_symbol} {total:,.2f}"]
         ]
         summary_table = Table(summary, colWidths=[doc.width-40*mm, 40*mm])
         summary_table.setStyle(TableStyle([
@@ -481,16 +525,16 @@ class SalesManagementWidget(QWidget):
                 canvas.drawImage(logo_path, 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
             else:
                 # Fallback logo
-                if os.path.exists('assets/logo.jpg'):
-                    canvas.drawImage('assets/logo.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+                if os.path.exists('assets/logo.png'):
+                    canvas.drawImage('assets/logo.png', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
 
             # Logo (Bottom Right)
             if logo_path and os.path.exists(logo_path):
                 canvas.drawImage(logo_path, A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
             else:
                 # Fallback logo
-                if os.path.exists('assets/logo.jpg'):
-                    canvas.drawImage('assets/logo.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+                if os.path.exists('assets/logo.png'):
+                    canvas.drawImage('assets/logo.png', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
 
         doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
         QMessageBox.information(self, "Success", f"Receipt saved to:\n{file_path}")
