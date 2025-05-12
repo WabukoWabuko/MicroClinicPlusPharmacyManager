@@ -460,14 +460,14 @@ class SalesManagementWidget(QWidget):
             # Background Image (faded hospital theme)
             canvas.saveState()
             canvas.setFillAlpha(0.2)  # Faded effect
-            canvas.drawImage('database/hospital_bg2.jpg', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
+            canvas.drawImage('assets/hospital_bg.jpg', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
             canvas.restoreState()
 
             # Logo (Top Left)
-            canvas.drawImage('database/logo2.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+            canvas.drawImage('assets/logo.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
 
             # Logo (Bottom Right)
-            canvas.drawImage('database/logo2.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+            canvas.drawImage('assets/logo.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
 
         doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
         QMessageBox.information(self, "Success", f"Receipt saved to:\n{file_path}")

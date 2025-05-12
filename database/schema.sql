@@ -73,6 +73,7 @@ CREATE TABLE sales (
     user_id INTEGER NOT NULL,
     total_price REAL NOT NULL CHECK (total_price >= 0),
     sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    mode_of_payment TEXT NOT NULL CHECK (mode_of_payment IN ('Cash', 'Card', 'Mobile')),
     is_synced INTEGER DEFAULT 0,
     sync_status TEXT DEFAULT 'pending',
     FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE,

@@ -413,14 +413,14 @@ class PatientManagementWidget(QWidget):
 
         elements = []
 
-        # Background Image (faded hospital theme)
+        # Background Image and Logo (faded hospital theme)
         def on_page(canvas, doc):
             canvas.saveState()
             canvas.setFillAlpha(0.2)
-            canvas.drawImage('hospital_bg.png', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
+            canvas.drawImage('assets/hospital_bg.jpg', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
             canvas.restoreState()
-            canvas.drawImage('logo.png', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
-            canvas.drawImage('logo.png', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+            canvas.drawImage('assets/logo.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+            canvas.drawImage('assets/logo.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
 
         # Header
         elements.append(Paragraph("Wabuko Health Clinic", header_style))
