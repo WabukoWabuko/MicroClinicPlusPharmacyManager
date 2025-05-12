@@ -2,15 +2,27 @@ import sqlite3
 import bcrypt
 import os
 from datetime import datetime
+from supabase import create_client, Client
+from dotenv import load_dotenv
+import requests
+import json
 
 class Database:
     def __init__(self):
         self.db_path = "database/clinic.db"
-        self.schema_path = "db/schema.sql"
+        self.schema_path = "database/schema.sql"
+        load_dotenv()
+        self.supabase_url = os.getenv("SUPABASE_URL")
+        self.supabase_key = os.getenv("SUPABASE_KEY")
+        self.supabase: Client = None
+        self.sync_enabled = False
+        self.last_sync_time = None
+        if self.supabase_url and self.supabase_key:
+            self.supabase = create_client(self.supabase_url, self.supabase_key)
         self.init_database()
 
     def init_database(self):
-        """Initialize the database with schema.sql if it doesn't exist."""
+        """Initialize the local SQLite database with schema.sql."""
         if not os.path.exists(self.db_path) or not self.table_exists("users"):
             with open(self.schema_path, 'r') as f:
                 schema = f.read()
@@ -18,6 +30,21 @@ class Database:
             conn.executescript(schema)
             conn.commit()
             conn.close()
+        # Create sync_queue table in SQLite if not exists
+        conn = self.connect()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS sync_queue (
+                queue_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_name TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                record_id INTEGER NOT NULL,
+                data TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status TEXT DEFAULT 'pending'
+            )
+        """)
+        conn.commit()
+        conn.close()
 
     def table_exists(self, table_name):
         """Check if a table exists in the database."""
@@ -29,19 +56,100 @@ class Database:
         return exists
 
     def connect(self):
-        """Connect to the database with row factory."""
+        """Connect to the local SQLite database."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
 
+    def is_online(self):
+        """Check if internet connection is available."""
+        try:
+            requests.get("https://www.google.com", timeout=2)
+            return True
+        except requests.ConnectionError:
+            return False
+
+    def toggle_sync(self, enabled):
+        """Enable or disable cloud sync."""
+        self.sync_enabled = enabled
+        if enabled and self.is_online():
+            self.sync_data()
+
+    def queue_sync_operation(self, table_name, operation, record_id, data):
+        """Add an operation to the sync queue."""
+        if not self.sync_enabled:
+            return
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO sync_queue (table_name, operation, record_id, data, status)
+            VALUES (?, ?, ?, ?, 'pending')
+        """, (table_name, operation, record_id, json.dumps(data)))
+        conn.commit()
+        conn.close()
+
+    def sync_data(self):
+        """Sync local SQLite with Supabase."""
+        if not self.sync_enabled or not self.is_online() or not self.supabase:
+            return
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sync_queue WHERE status = 'pending'")
+        queue_items = [dict(row) for row in cursor.fetchall()]
+        
+        for item in queue_items:
+            table_name = item['table_name']
+            operation = item['operation']
+            record_id = item['record_id']
+            data = json.loads(item['data']) if item['data'] else {}
+            try:
+                if operation == 'INSERT':
+                    response = self.supabase.table(table_name).insert(data).execute()
+                    if response.data:
+                        conn.execute(f"UPDATE {table_name} SET is_synced = 1, sync_status = 'synced' WHERE {table_name}_id = ?", (record_id,))
+                elif operation == 'UPDATE':
+                    response = self.supabase.table(table_name).update(data).eq(f"{table_name}_id", record_id).execute()
+                    if response.data:
+                        conn.execute(f"UPDATE {table_name} SET is_synced = 1, sync_status = 'synced' WHERE {table_name}_id = ?", (record_id,))
+                elif operation == 'DELETE':
+                    response = self.supabase.table(table_name).delete().eq(f"{table_name}_id", record_id).execute()
+                    if response.data:
+                        conn.execute(f"UPDATE sync_queue SET status = 'synced' WHERE queue_id = ?", (item['queue_id'],))
+                conn.execute("UPDATE sync_queue SET status = 'synced' WHERE queue_id = ?", (item['queue_id'],))
+            except Exception as e:
+                conn.execute("UPDATE sync_queue SET status = 'failed' WHERE queue_id = ?", (item['queue_id'],))
+                print(f"Sync error for {table_name} {operation}: {e}")
+        
+        # Pull updates from Supabase
+        for table in ['patients', 'drugs', 'prescriptions', 'sales', 'sale_items']:
+            local_data = {row[f"{table[:-1]}_id"]: dict(row) for row in conn.execute(f"SELECT * FROM {table}").fetchall()}
+            remote_data = self.supabase.table(table).select("*").execute().data
+            for remote_row in remote_data:
+                remote_id = remote_row[f"{table[:-1]}_id"]
+                remote_updated_at = datetime.fromisoformat(remote_row['updated_at'].replace('Z', '+00:00'))
+                local_row = local_data.get(remote_id)
+                if not local_row:
+                    # Insert new remote record locally
+                    cols = ', '.join(remote_row.keys())
+                    placeholders = ', '.join('?' for _ in remote_row)
+                    conn.execute(f"INSERT INTO {table} ({cols}) VALUES ({placeholders})", list(remote_row.values()))
+                elif datetime.fromisoformat(local_row['updated_at'].replace('Z', '+00:00')) < remote_updated_at:
+                    # Update local with newer remote
+                    updates = ', '.join(f"{k} = ?" for k in remote_row.keys() if k != f"{table[:-1]}_id")
+                    conn.execute(f"UPDATE {table} SET {updates} WHERE {table[:-1]}_id = ?", 
+                                 list(remote_row.values())[:-1] + [remote_id])
+        
+        conn.commit()
+        conn.close()
+        self.last_sync_time = datetime.now()
+
     def authenticate_user(self, username, password):
-        """Authenticate a user by verifying username and password."""
+        """Authenticate a user."""
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         user = cursor.fetchone()
         conn.close()
-
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
             return dict(user)
         return None
@@ -60,12 +168,18 @@ class Database:
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO patients (first_name, last_name, age, gender, contact, medical_history)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO patients (first_name, last_name, age, gender, contact, medical_history, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 'pending')
         """, (first_name, last_name, age, gender, contact, medical_history))
-        conn.commit()
         patient_id = cursor.lastrowid
+        conn.commit()
         conn.close()
+        self.queue_sync_operation('patients', 'INSERT', patient_id, {
+            'patient_id': patient_id, 'first_name': first_name, 'last_name': last_name, 'age': age,
+            'gender': gender, 'contact': contact, 'medical_history': medical_history,
+            'registration_date': datetime.now().isoformat(), 'updated_at': datetime.now().isoformat(),
+            'is_synced': False, 'sync_status': 'pending'
+        })
         return patient_id
 
     def get_patient(self, patient_id):
@@ -91,12 +205,17 @@ class Database:
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO drugs (name, quantity, batch_number, expiry_date, price)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO drugs (name, quantity, batch_number, expiry_date, price, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, 0, 'pending')
         """, (name, quantity, batch_number, expiry_date, price))
-        conn.commit()
         drug_id = cursor.lastrowid
+        conn.commit()
         conn.close()
+        self.queue_sync_operation('drugs', 'INSERT', drug_id, {
+            'drug_id': drug_id, 'name': name, 'quantity': quantity, 'batch_number': batch_number,
+            'expiry_date': expiry_date, 'price': price, 'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat(), 'is_synced': False, 'sync_status': 'pending'
+        })
         return drug_id
 
     def get_drug(self, drug_id):
@@ -113,11 +232,16 @@ class Database:
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            UPDATE drugs SET quantity = ?, batch_number = ?, expiry_date = ?, price = ?, updated_at = ?
+            UPDATE drugs SET quantity = ?, batch_number = ?, expiry_date = ?, price = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE drug_id = ?
         """, (quantity, batch_number, expiry_date, price, datetime.now(), drug_id))
         conn.commit()
         conn.close()
+        self.queue_sync_operation('drugs', 'UPDATE', drug_id, {
+            'drug_id': drug_id, 'quantity': quantity, 'batch_number': batch_number,
+            'expiry_date': expiry_date, 'price': price, 'updated_at': datetime.now().isoformat(),
+            'is_synced': False, 'sync_status': 'pending'
+        })
 
     def delete_drug(self, drug_id):
         """Delete a drug."""
@@ -126,6 +250,7 @@ class Database:
         cursor.execute("DELETE FROM drugs WHERE drug_id = ?", (drug_id,))
         conn.commit()
         conn.close()
+        self.queue_sync_operation('drugs', 'DELETE', drug_id, {})
 
     def get_all_prescriptions(self):
         """Retrieve all prescriptions."""
@@ -141,12 +266,19 @@ class Database:
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')
         """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed))
-        conn.commit()
         prescription_id = cursor.lastrowid
+        conn.commit()
         conn.close()
+        self.queue_sync_operation('prescriptions', 'INSERT', prescription_id, {
+            'prescription_id': prescription_id, 'patient_id': patient_id, 'user_id': user_id,
+            'diagnosis': diagnosis, 'notes': notes, 'drug_id': drug_id, 'dosage': dosage,
+            'frequency': frequency, 'duration': duration, 'quantity_prescribed': quantity_prescribed,
+            'prescription_date': datetime.now().isoformat(), 'updated_at': datetime.now().isoformat(),
+            'is_synced': False, 'sync_status': 'pending'
+        })
         return prescription_id
 
     def get_all_sales(self):
@@ -163,12 +295,17 @@ class Database:
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO sales (patient_id, user_id, total_price)
-            VALUES (?, ?, ?)
+            INSERT INTO sales (patient_id, user_id, total_price, is_synced, sync_status)
+            VALUES (?, ?, ?, 0, 'pending')
         """, (patient_id, user_id, total_price))
-        conn.commit()
         sale_id = cursor.lastrowid
+        conn.commit()
         conn.close()
+        self.queue_sync_operation('sales', 'INSERT', sale_id, {
+            'sale_id': sale_id, 'patient_id': patient_id, 'user_id': user_id,
+            'total_price': total_price, 'sale_date': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat(), 'is_synced': False, 'sync_status': 'pending'
+        })
         return sale_id
 
     def add_sale_item(self, sale_id, drug_id, quantity, price):
@@ -176,11 +313,17 @@ class Database:
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO sale_items (sale_id, drug_id, quantity, price)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO sale_items (sale_id, drug_id, quantity, price, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, 0, 'pending')
         """, (sale_id, drug_id, quantity, price))
+        sale_item_id = cursor.lastrowid
         conn.commit()
         conn.close()
+        self.queue_sync_operation('sale_items', 'INSERT', sale_item_id, {
+            'sale_item_id': sale_item_id, 'sale_id': sale_id, 'drug_id': drug_id,
+            'quantity': quantity, 'price': price, 'updated_at': datetime.now().isoformat(),
+            'is_synced': False, 'sync_status': 'pending'
+        })
 
     def get_sale_items(self, sale_id):
         """Retrieve sale items for a sale."""
@@ -192,7 +335,7 @@ class Database:
         return items
 
     def get_low_stock_drugs(self):
-        """Retrieve drugs with low stock (quantity < 10)."""
+        """Retrieve drugs with low stock."""
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM drugs WHERE quantity < 10")
@@ -201,7 +344,7 @@ class Database:
         return drugs
 
     def add_user(self, username, password_hash, role):
-        """Add a new user."""
+        """Add a new user (local only)."""
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
