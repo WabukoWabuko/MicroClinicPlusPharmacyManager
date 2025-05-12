@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
                              QLineEdit, QTextEdit, QPushButton, QTableWidget,
-                             QTableWidgetItem, QHeaderView, QMessageBox)
-from PyQt6.QtCore import Qt, QCompleter
+                             QTableWidgetItem, QHeaderView, QMessageBox, QCompleter)
+from PyQt6.QtCore import Qt
 from db.database import Database
 
 class SearchableComboBox(QComboBox):

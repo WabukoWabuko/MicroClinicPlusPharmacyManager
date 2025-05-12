@@ -331,16 +331,16 @@ class ReportingDashboardWidget(QWidget):
                 canvas.drawImage(logo_path, 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
             else:
                 # Fallback logo
-                if os.path.exists('assets/logo.jpg'):
-                    canvas.drawImage('assets/logo.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+                if os.path.exists('assets/logo.png'):
+                    canvas.drawImage('assets/logo.png', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
 
             # Logo (Bottom Right)
             if logo_path and os.path.exists(logo_path):
                 canvas.drawImage(logo_path, A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
             else:
                 # Fallback logo
-                if os.path.exists('assets/logo.jpg'):
-                    canvas.drawImage('assets/logo.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+                if os.path.exists('assets/logo.png'):
+                    canvas.drawImage('assets/logo.png', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
 
         pdf.build(elements, onFirstPage=on_page, onLaterPages=on_page)
         QMessageBox.information(self, "Success", f"Report exported to {file_path}")

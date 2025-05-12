@@ -5,6 +5,7 @@ from ui.patient_management import PatientManagementWidget
 from ui.inventory_management import InventoryManagementWidget
 from ui.prescription_logging import PrescriptionLoggingWidget
 from ui.sales_management import SalesManagementWidget
+from ui.supplier_management import SupplierManagementWidget
 from ui.user_management import UserManagementWidget
 from ui.settings import SettingsWidget
 from ui.reporting_dashboard import ReportingDashboardWidget
@@ -84,6 +85,7 @@ class MainWindow(QMainWindow):
             ("Inventory Management", self.show_inventory_management),
             ("Prescription Logging", self.show_prescription_logging),
             ("Sales Management", self.show_sales_management),
+            ("Supplier Management", self.show_supplier_management),
         ]
         if self.current_user and self.current_user['role'] == 'admin':
             buttons.append(("User Management", self.show_user_management))
@@ -178,6 +180,12 @@ class MainWindow(QMainWindow):
         widget = SalesManagementWidget(self)
         self.content_layout.addWidget(widget)
         self.set_title("Sales Management")
+
+    def show_supplier_management(self):
+        self.clear_content()
+        widget = SupplierManagementWidget(self)
+        self.content_layout.addWidget(widget)
+        self.set_title("Supplier Management")
 
     def show_user_management(self):
         self.clear_content()
