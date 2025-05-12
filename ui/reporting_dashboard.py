@@ -10,6 +10,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.graphics.shapes import Image
+import os
 
 class ReportingDashboardWidget(QWidget):
     def __init__(self, main_window):
@@ -249,10 +250,16 @@ class ReportingDashboardWidget(QWidget):
 
         elements = []
 
+        # Retrieve settings from config
+        logo_path = self.main_window.config.get("logo_path", "")
+        bg_path = self.main_window.config.get("background_path", "")
+        clinic_name = self.main_window.config.get("clinic_name", "MicroClinic")
+        contact_details = self.main_window.config.get("contact_details", "")
+
         # Header
-        elements.append(Paragraph("Wabuko Health Clinic", header_style))
+        elements.append(Paragraph(clinic_name, header_style))
         elements.append(Paragraph("123 Moi Avenue, Nairobi, Kenya", normal_center))
-        elements.append(Paragraph("Phone: +234 700 123 4567 | info@wabukohealth.ng", normal_center))
+        elements.append(Paragraph(f"Phone: {contact_details}" if contact_details else "Contact Not Provided", normal_center))
         elements.append(Spacer(1, 4))
         elements.append(HRFlowable(width=pdf.width, thickness=0.5, color=colors.black))
         elements.append(Spacer(1, 8))
@@ -301,23 +308,39 @@ class ReportingDashboardWidget(QWidget):
         elements.append(Spacer(1, 12))
 
         # Footer
-        elements.append(Paragraph("Thank you for choosing Wabuko Health Clinic!", normal_center))
-        elements.append(Paragraph("Contact: +234 700 123 4567 | info@wabukohealth.ng", normal_center))
+        elements.append(Paragraph(f"Thank you for choosing {clinic_name}!", normal_center))
+        elements.append(Paragraph(f"Contact: {contact_details}" if contact_details else "Contact Not Provided", normal_center))
         elements.append(Spacer(1, 4))
 
         # Build with canvas setup for background and logos
         def on_page(canvas, doc):
-            # Background Image (faded hospital theme)
+            # Background Image
             canvas.saveState()
-            canvas.setFillAlpha(0.2)  # Faded effect
-            canvas.drawImage('database/hospital_bg2.jpg', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
+            if bg_path and os.path.exists(bg_path):
+                canvas.setFillAlpha(0.2)  # Faded effect
+                canvas.drawImage(bg_path, 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
+            else:
+                # Fallback background
+                if os.path.exists('assets/hospital_bg.jpg'):
+                    canvas.setFillAlpha(0.2)
+                    canvas.drawImage('assets/hospital_bg.jpg', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
             canvas.restoreState()
 
             # Logo (Top Left)
-            canvas.drawImage('database/logo2.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+            if logo_path and os.path.exists(logo_path):
+                canvas.drawImage(logo_path, 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+            else:
+                # Fallback logo
+                if os.path.exists('assets/logo.jpg'):
+                    canvas.drawImage('assets/logo.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
 
             # Logo (Bottom Right)
-            canvas.drawImage('database/logo2.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+            if logo_path and os.path.exists(logo_path):
+                canvas.drawImage(logo_path, A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+            else:
+                # Fallback logo
+                if os.path.exists('assets/logo.jpg'):
+                    canvas.drawImage('assets/logo.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
 
         pdf.build(elements, onFirstPage=on_page, onLaterPages=on_page)
         QMessageBox.information(self, "Success", f"Report exported to {file_path}")

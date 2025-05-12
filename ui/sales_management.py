@@ -10,6 +10,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.graphics.shapes import Rect, Image
+import os
 
 class SalesManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -356,10 +357,17 @@ class SalesManagementWidget(QWidget):
 
         elements = []
 
+        # Retrieve settings from config
+        logo_path = self.main_window.config.get("logo_path", "")
+        bg_path = self.main_window.config.get("background_path", "")
+        clinic_name = self.main_window.config.get("clinic_name", "MicroClinic")
+        contact_details = self.main_window.config.get("contact_details", "")
+        tax_rate = self.main_window.config.get("tax_rate", 0) / 100.0  # Convert percentage to decimal
+
         # Header
-        elements.append(Paragraph("Wabuko Health Clinic", header_style))
+        elements.append(Paragraph(clinic_name, header_style))
         elements.append(Paragraph("123 Moi Avenue, Nairobi, Kenya", normal_center))
-        elements.append(Paragraph("Phone: +234 700 123 4567 | info@wabukohealth.ng", normal_center))
+        elements.append(Paragraph(f"Phone: {contact_details}" if contact_details else "Contact Not Provided", normal_center))
         elements.append(Spacer(1, 4))
         elements.append(HRFlowable(width=doc.width, thickness=0.5, color=colors.black))
         elements.append(Spacer(1, 8))
@@ -430,13 +438,12 @@ class SalesManagementWidget(QWidget):
 
         # Summary Calculations
         subtotal = sum(it['price'] for it in sale_items)
-        tax_rate = 0.075
         tax = subtotal * tax_rate
         total = subtotal + tax
 
         summary = [
             ["Subtotal:", f"KSh. {subtotal:,.2f}"],
-            ["Tax (7.5%):", f"KSh. {tax:,.2f}"],
+            [f"Tax ({tax_rate*100}%):", f"KSh. {tax:,.2f}"],
             ["Total Payable:", f"KSh. {total:,.2f}"]
         ]
         summary_table = Table(summary, colWidths=[doc.width-40*mm, 40*mm])
@@ -451,23 +458,39 @@ class SalesManagementWidget(QWidget):
         elements.append(Spacer(1, 18))
 
         # Footer
-        elements.append(Paragraph("Thank you for choosing Wabuko Health Clinic!", normal_center))
-        elements.append(Paragraph("Contact: +234 700 123 4567 | info@wabukohealth.ng", normal_center))
+        elements.append(Paragraph(f"Thank you for choosing {clinic_name}!", normal_center))
+        elements.append(Paragraph(f"Contact: {contact_details}" if contact_details else "Contact Not Provided", normal_center))
         elements.append(Spacer(1, 4))
 
         # Build with canvas setup for background and logos
         def on_page(canvas, doc):
-            # Background Image (faded hospital theme)
+            # Background Image
             canvas.saveState()
-            canvas.setFillAlpha(0.2)  # Faded effect
-            canvas.drawImage('assets/hospital_bg.jpg', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
+            if bg_path and os.path.exists(bg_path):
+                canvas.setFillAlpha(0.2)  # Faded effect
+                canvas.drawImage(bg_path, 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
+            else:
+                # Fallback background
+                if os.path.exists('assets/hospital_bg.jpg'):
+                    canvas.setFillAlpha(0.2)
+                    canvas.drawImage('assets/hospital_bg.jpg', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
             canvas.restoreState()
 
             # Logo (Top Left)
-            canvas.drawImage('assets/logo.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+            if logo_path and os.path.exists(logo_path):
+                canvas.drawImage(logo_path, 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+            else:
+                # Fallback logo
+                if os.path.exists('assets/logo.jpg'):
+                    canvas.drawImage('assets/logo.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
 
             # Logo (Bottom Right)
-            canvas.drawImage('assets/logo.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+            if logo_path and os.path.exists(logo_path):
+                canvas.drawImage(logo_path, A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+            else:
+                # Fallback logo
+                if os.path.exists('assets/logo.jpg'):
+                    canvas.drawImage('assets/logo.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
 
         doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
         QMessageBox.information(self, "Success", f"Receipt saved to:\n{file_path}")
