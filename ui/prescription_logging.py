@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
                              QLineEdit, QTextEdit, QPushButton, QTableWidget,
                              QTableWidgetItem, QHeaderView, QMessageBox)
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QCompleter
 from db.database import Database
 
 class SearchableComboBox(QComboBox):
@@ -9,8 +9,8 @@ class SearchableComboBox(QComboBox):
         super().__init__(parent)
         self.setEditable(True)
         self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.completer().setCompletionMode(QComboBox.CompleterMode.PopupCompletion)
-        self.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        self.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.completer().setFilterMode(Qt.MatchContains)
         self.setStyleSheet("""
             QComboBox {
                 padding: 8px;
