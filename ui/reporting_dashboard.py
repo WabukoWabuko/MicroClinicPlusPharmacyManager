@@ -310,14 +310,14 @@ class ReportingDashboardWidget(QWidget):
             # Background Image (faded hospital theme)
             canvas.saveState()
             canvas.setFillAlpha(0.2)  # Faded effect
-            canvas.drawImage('hospital_bg.png', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
+            canvas.drawImage('database/hospital_bg2.jpg', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
             canvas.restoreState()
 
             # Logo (Top Left)
-            canvas.drawImage('logo.png', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+            canvas.drawImage('database/logo2.jpg', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
 
             # Logo (Bottom Right)
-            canvas.drawImage('logo.png', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+            canvas.drawImage('database/logo2.jpg', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
 
         pdf.build(elements, onFirstPage=on_page, onLaterPages=on_page)
         QMessageBox.information(self, "Success", f"Report exported to {file_path}")
