@@ -376,20 +376,20 @@ class Database:
         conn.close()
         return sales
 
-    def add_sale(self, patient_id, user_id, total_price):
+    def add_sale(self, patient_id, user_id, total_price, mode_of_payment):
         """Add a new sale."""
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO sales (patient_id, user_id, total_price, is_synced, sync_status)
-            VALUES (?, ?, ?, 0, 'pending')
-        """, (patient_id, user_id, total_price))
+            INSERT INTO sales (patient_id, user_id, total_price, mode_of_payment, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, 0, 'pending')
+        """, (patient_id, user_id, total_price, mode_of_payment))
         sale_id = cursor.lastrowid
         conn.commit()
         conn.close()
         self.queue_sync_operation('sales', 'INSERT', sale_id, {
             'sale_id': sale_id, 'patient_id': patient_id, 'user_id': user_id,
-            'total_price': total_price, 'sale_date': datetime.now().isoformat(),
+            'total_price': total_price, 'mode_of_payment': mode_of_payment, 'sale_date': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat(), 'is_synced': False, 'sync_status': 'pending'
         })
         return sale_id
