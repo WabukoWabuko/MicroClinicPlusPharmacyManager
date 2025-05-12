@@ -10,7 +10,7 @@ import json
 class Database:
     def __init__(self):
         self.db_path = "database/clinic.db"
-        self.schema_path = "db/schema.sql"
+        self.schema_path = "database/schema.sql"
         self.config_path = "database/config.json"
         load_dotenv()
         self.supabase_url = os.getenv("SUPABASE_URL")
@@ -419,6 +419,18 @@ class Database:
         items = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return items
+
+    def get_sale(self, sale_id):
+        """Retrieve a sale and its items by sale ID."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sales WHERE sale_id = ?", (sale_id,))
+        sale = cursor.fetchone()
+        if sale:
+            sale = dict(sale)
+            sale['items'] = self.get_sale_items(sale_id)
+        conn.close()
+        return sale
 
     def get_low_stock_drugs(self):
         """Retrieve drugs with low stock."""
