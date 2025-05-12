@@ -166,6 +166,40 @@ class Database:
         conn.close()
         self.last_sync_time = datetime.now()
 
+    def get_sync_history(self, limit=100):
+        """Retrieve sync history from sync_queue with enriched details."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sync_queue ORDER BY created_at DESC LIMIT ?", (limit,))
+        queue_items = [dict(row) for row in cursor.fetchall()]
+        history = []
+        
+        for item in queue_items:
+            details = ""
+            table_name = item['table_name']
+            data = json.loads(item['data']) if item['data'] else {}
+            if table_name == 'patients' and 'first_name' in data and 'last_name' in data:
+                details = f"Patient: {data['first_name']} {data['last_name']}"
+            elif table_name == 'drugs' and 'name' in data:
+                details = f"Drug: {data['name']}"
+            elif table_name == 'prescriptions' and 'diagnosis' in data:
+                details = f"Diagnosis: {data['diagnosis']}"
+            elif table_name == 'sales' and 'total_price' in data:
+                details = f"Total: ${data['total_price']}"
+            elif table_name == 'sale_items' and 'quantity' in data:
+                details = f"Quantity: {data['quantity']}"
+            history.append({
+                'table_name': table_name,
+                'operation': item['operation'],
+                'record_id': item['record_id'],
+                'status': item['status'],
+                'timestamp': item['created_at'],
+                'details': details
+            })
+        
+        conn.close()
+        return history
+
     def authenticate_user(self, username, password):
         """Authenticate a user."""
         conn = self.connect()
