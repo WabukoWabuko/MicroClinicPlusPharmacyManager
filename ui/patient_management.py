@@ -1,9 +1,16 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
                              QComboBox, QTextEdit, QPushButton, QTableWidget,
-                             QTableWidgetItem, QHeaderView, QMessageBox)
+                             QTableWidgetItem, QHeaderView, QMessageBox, QFileDialog)
 from PyQt6.QtCore import Qt
 from db.database import Database
 from utils.validation import is_valid_name, is_valid_phone
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus.flowables import HRFlowable
+from reportlab.lib import colors
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.graphics.shapes import Image
 
 class PatientManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -143,6 +150,24 @@ class PatientManagementWidget(QWidget):
                 background-color: #3d8b40;
             }
         """)
+        print_button = QPushButton("Print Patient Data")
+        print_button.setToolTip("Print selected patient's data to PDF")
+        print_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #1565C0;
+            }
+        """)
         clear_button = QPushButton("Clear")
         clear_button.setToolTip("Clear form")
         clear_button.setStyleSheet("""
@@ -180,17 +205,19 @@ class PatientManagementWidget(QWidget):
             }
         """)
         add_button.clicked.connect(self.add_patient)
+        print_button.clicked.connect(self.print_patient_data)
         clear_button.clicked.connect(self.clear_form)
         back_button.clicked.connect(self.main_window.show_menu)
         button_layout.addWidget(add_button)
+        button_layout.addWidget(print_button)
         button_layout.addWidget(clear_button)
         button_layout.addWidget(back_button)
         main_layout.addLayout(button_layout)
 
         # Patient table
         self.patient_table = QTableWidget()
-        self.patient_table.setColumnCount(6)
-        self.patient_table.setHorizontalHeaderLabels(["ID", "First Name", "Last Name", "Age", "Gender", "Contact"])
+        self.patient_table.setColumnCount(7)
+        self.patient_table.setHorizontalHeaderLabels(["ID", "First Name", "Last Name", "Age", "Gender", "Contact", "Medical History"])
         self.patient_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.patient_table.setToolTip("List of registered patients")
         self.patient_table.setStyleSheet("""
@@ -219,6 +246,7 @@ class PatientManagementWidget(QWidget):
             self.patient_table.setItem(row, 3, QTableWidgetItem(str(patient['age'])))
             self.patient_table.setItem(row, 4, QTableWidgetItem(patient['gender']))
             self.patient_table.setItem(row, 5, QTableWidgetItem(patient['contact']))
+            self.patient_table.setItem(row, 6, QTableWidgetItem(patient['medical_history'] if patient['medical_history'] else "N/A"))
 
     def add_patient(self):
         first_name = self.first_name_input.text().strip()
@@ -352,6 +380,87 @@ class PatientManagementWidget(QWidget):
         QMessageBox.information(self, "Success", "Patient added successfully.")
         self.load_patients()
         self.clear_form()
+
+    def print_patient_data(self):
+        row = self.patient_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Error", "Please select a patient to print data for.")
+            return
+
+        patient_id = int(self.patient_table.item(row, 0).text())
+        patient = self.db.get_patient(patient_id)
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save Patient Data", f"patient_{patient_id}_data.pdf", "PDF Files (*.pdf)"
+        )
+        if not file_path:
+            return
+
+        # Setup document
+        doc = SimpleDocTemplate(file_path, pagesize=A4,
+                                leftMargin=20*mm, rightMargin=20*mm,
+                                topMargin=20*mm, bottomMargin=20*mm)
+
+        # Styles
+        styles = getSampleStyleSheet()
+        header_style = ParagraphStyle(
+            'Header', parent=styles['Heading1'], fontSize=18,
+            alignment=1, spaceAfter=6)
+        normal_center = ParagraphStyle(
+            'NormalCenter', parent=styles['Normal'], alignment=1, fontSize=10)
+        normal = ParagraphStyle(
+            'Normal', parent=styles['Normal'], fontSize=10, leading=12)
+
+        elements = []
+
+        # Background Image (faded hospital theme)
+        def on_page(canvas, doc):
+            canvas.saveState()
+            canvas.setFillAlpha(0.2)
+            canvas.drawImage('hospital_bg.png', 20*mm, 20*mm, width=A4[0]-40*mm, height=A4[1]-40*mm, mask='auto')
+            canvas.restoreState()
+            canvas.drawImage('logo.png', 20*mm, A4[1]-30*mm, width=50*mm, height=50*mm, mask='auto')
+            canvas.drawImage('logo.png', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
+
+        # Header
+        elements.append(Paragraph("Wabuko Health Clinic", header_style))
+        elements.append(Paragraph("123 Moi Avenue, Nairobi, Kenya", normal_center))
+        elements.append(Paragraph("Phone: +234 700 123 4567 | info@wabukohealth.ng", normal_center))
+        elements.append(Spacer(1, 4))
+        elements.append(HRFlowable(width=doc.width, thickness=0.5, color=colors.black))
+        elements.append(Spacer(1, 8))
+
+        # Patient Data Title
+        elements.append(Paragraph("Patient Data", styles['Heading2']))
+        elements.append(Spacer(1, 12))
+
+        # Patient Details
+        patient_data = [
+            ["Patient ID:", f"PT-{patient['patient_id']:05d}"],
+            ["First Name:", patient['first_name']],
+            ["Last Name:", patient['last_name']],
+            ["Age:", str(patient['age'])],
+            ["Gender:", patient['gender']],
+            ["Contact:", patient['contact']],
+            ["Medical History:", patient['medical_history'] if patient['medical_history'] else "N/A"]
+        ]
+        pat_table = Table(patient_data, colWidths=[40*mm, doc.width-40*mm])
+        pat_table.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,0), (-1,-1), 10),
+            ('ALIGN', (1,0), (1,-1), 'LEFT'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+        elements.append(pat_table)
+        elements.append(Spacer(1, 12))
+
+        # Footer
+        elements.append(Paragraph("Thank you for choosing Wabuko Health Clinic!", normal_center))
+        elements.append(Paragraph("Contact: +234 700 123 4567 | info@wabukohealth.ng", normal_center))
+        elements.append(Spacer(1, 4))
+
+        doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+        QMessageBox.information(self, "Success", f"Patient data saved to:\n{file_path}")
 
     def clear_form(self):
         self.first_name_input.clear()
