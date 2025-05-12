@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox, QPushButton, QMessageBox, QTableWidget, QTableWidgetItem, QLineEdit, QComboBox, QFileDialog
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox, QPushButton, QMessageBox, QTableWidget, QTableWidgetItem, QLineEdit, QComboBox, QFileDialog, QScrollArea
 from PyQt6.QtCore import Qt
 import os
 import shutil
@@ -12,15 +12,26 @@ class SettingsWidget(QWidget):
         self.init_ui()
 
     def init_ui(self):
+        # Main layout for the entire widget
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
+
+        # Create a scroll area to make content expandable
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; }")
+        main_layout.addWidget(scroll)
+
+        # Widget to hold all content inside the scroll area
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
 
         # Title
         self.set_title("Settings")
         title = QLabel("Settings")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF; margin: 20px;")
-        main_layout.addWidget(title)
+        scroll_layout.addWidget(title)
 
         # Check if user is admin
         is_admin = self.main_window.current_user and self.main_window.current_user.get('role') == 'admin'
@@ -47,11 +58,14 @@ class SettingsWidget(QWidget):
             clinic_layout.addWidget(clinic_label)
             clinic_layout.addWidget(self.clinic_input)
             clinic_layout.addStretch()
-            main_layout.addLayout(clinic_layout)
+            scroll_layout.addLayout(clinic_layout)
 
-        # Logo (admin only)
+        # Image selection (admin only) - Logo and Background side by side
         if is_admin:
-            logo_layout = QHBoxLayout()
+            image_layout = QHBoxLayout()
+            
+            # Logo selection
+            logo_inner_layout = QHBoxLayout()
             logo_label = QLabel("Receipt Logo:")
             logo_label.setStyleSheet("font-size: 14px; color: #FFFFFF; padding: 5px;")
             self.logo_button = QPushButton("Choose Logo")
@@ -75,15 +89,12 @@ class SettingsWidget(QWidget):
             self.logo_button.clicked.connect(self.choose_logo)
             self.logo_label = QLabel("No logo selected")
             self.logo_label.setStyleSheet("font-size: 12px; color: #FFFFFF; padding: 5px;")
-            logo_layout.addWidget(logo_label)
-            logo_layout.addWidget(self.logo_button)
-            logo_layout.addWidget(self.logo_label)
-            logo_layout.addStretch()
-            main_layout.addLayout(logo_layout)
-
-        # Background Image (admin only)
-        if is_admin:
-            bg_layout = QHBoxLayout()
+            logo_inner_layout.addWidget(logo_label)
+            logo_inner_layout.addWidget(self.logo_button)
+            logo_inner_layout.addWidget(self.logo_label)
+            
+            # Background Image selection
+            bg_inner_layout = QHBoxLayout()
             bg_label = QLabel("Background Image:")
             bg_label.setStyleSheet("font-size: 14px; color: #FFFFFF; padding: 5px;")
             self.bg_button = QPushButton("Choose Background")
@@ -107,15 +118,21 @@ class SettingsWidget(QWidget):
             self.bg_button.clicked.connect(self.choose_background)
             self.bg_label = QLabel("No background selected")
             self.bg_label.setStyleSheet("font-size: 12px; color: #FFFFFF; padding: 5px;")
-            bg_layout.addWidget(bg_label)
-            bg_layout.addWidget(self.bg_button)
-            bg_layout.addWidget(self.bg_label)
-            bg_layout.addStretch()
-            main_layout.addLayout(bg_layout)
+            bg_inner_layout.addWidget(bg_label)
+            bg_inner_layout.addWidget(self.bg_button)
+            bg_inner_layout.addWidget(self.bg_label)
+            
+            image_layout.addLayout(logo_inner_layout)
+            image_layout.addStretch()
+            image_layout.addLayout(bg_inner_layout)
+            scroll_layout.addLayout(image_layout)
 
-        # Tax Rate (admin only)
+        # Tax Rate and Contact Details (admin only) - side by side
         if is_admin:
-            tax_layout = QHBoxLayout()
+            tax_contact_layout = QHBoxLayout()
+            
+            # Tax Rate
+            tax_inner_layout = QHBoxLayout()
             tax_label = QLabel("Tax Rate (%):")
             tax_label.setStyleSheet("font-size: 14px; color: #FFFFFF; padding: 5px;")
             self.tax_input = QLineEdit()
@@ -132,14 +149,11 @@ class SettingsWidget(QWidget):
                     min-width: 100px;
                 }
             """)
-            tax_layout.addWidget(tax_label)
-            tax_layout.addWidget(self.tax_input)
-            tax_layout.addStretch()
-            main_layout.addLayout(tax_layout)
-
-        # Contact Details (admin only)
-        if is_admin:
-            contact_layout = QHBoxLayout()
+            tax_inner_layout.addWidget(tax_label)
+            tax_inner_layout.addWidget(self.tax_input)
+            
+            # Contact Details
+            contact_inner_layout = QHBoxLayout()
             contact_label = QLabel("Contact Details:")
             contact_label.setStyleSheet("font-size: 14px; color: #FFFFFF; padding: 5px;")
             self.contact_input = QLineEdit()
@@ -153,13 +167,16 @@ class SettingsWidget(QWidget):
                     font-size: 14px;
                     background-color: #2E2E2E;
                     color: #FFFFFF;
-                    min-width: 300px;
+                    min-width: 200px;
                 }
             """)
-            contact_layout.addWidget(contact_label)
-            contact_layout.addWidget(self.contact_input)
-            contact_layout.addStretch()
-            main_layout.addLayout(contact_layout)
+            contact_inner_layout.addWidget(contact_label)
+            contact_inner_layout.addWidget(self.contact_input)
+            
+            tax_contact_layout.addLayout(tax_inner_layout)
+            tax_contact_layout.addStretch()
+            tax_contact_layout.addLayout(contact_inner_layout)
+            scroll_layout.addLayout(tax_contact_layout)
 
         # Sync toggle (staff and admin)
         sync_layout = QHBoxLayout()
@@ -175,19 +192,22 @@ class SettingsWidget(QWidget):
         """)
         sync_layout.addWidget(self.sync_toggle)
         sync_layout.addStretch()
-        main_layout.addLayout(sync_layout)
+        scroll_layout.addLayout(sync_layout)
 
         # Sync status
         self.status_label = QLabel(self.get_sync_status())
         self.status_label.setStyleSheet("font-size: 12px; color: #FFFFFF; padding: 5px;")
-        main_layout.addWidget(self.status_label)
+        scroll_layout.addWidget(self.status_label)
 
         # Sync message
         sync_message = QLabel("Syncing is automatic when enabled, but you can sync manually using the button below.")
         sync_message.setStyleSheet("font-size: 12px; color: #FFFFFF; font-style: italic; padding: 5px;")
-        main_layout.addWidget(sync_message)
+        scroll_layout.addWidget(sync_message)
 
-        # Sync now button
+        # Action buttons (Sync Now, Import, Export, Save, Back) - side by side
+        action_buttons_layout = QHBoxLayout()
+        
+        # Sync Now button
         sync_now_button = QPushButton("Sync Now")
         sync_now_button.setToolTip("Manually sync data to the cloud")
         sync_now_button.setStyleSheet("""
@@ -198,7 +218,7 @@ class SettingsWidget(QWidget):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 120px;
+                min-width: 100px;
             }
             QPushButton:hover {
                 background-color: #1976D2;
@@ -208,11 +228,10 @@ class SettingsWidget(QWidget):
             }
         """)
         sync_now_button.clicked.connect(self.manual_sync)
-        main_layout.addWidget(sync_now_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        action_buttons_layout.addWidget(sync_now_button)
 
         # Import Data (admin only)
         if is_admin:
-            import_layout = QHBoxLayout()
             import_button = QPushButton("Import Data")
             import_button.setToolTip("Import data from a backup file")
             import_button.setStyleSheet("""
@@ -223,7 +242,7 @@ class SettingsWidget(QWidget):
                     border: none;
                     border-radius: 5px;
                     font-size: 14px;
-                    min-width: 120px;
+                    min-width: 100px;
                 }
                 QPushButton:hover {
                     background-color: #F57C00;
@@ -233,13 +252,10 @@ class SettingsWidget(QWidget):
                 }
             """)
             import_button.clicked.connect(self.import_data)
-            import_layout.addWidget(import_button)
-            import_layout.addStretch()
-            main_layout.addLayout(import_layout)
+            action_buttons_layout.addWidget(import_button)
 
         # Export Data (admin only)
         if is_admin:
-            export_layout = QHBoxLayout()
             export_button = QPushButton("Export Data")
             export_button.setToolTip("Export data to a backup file")
             export_button.setStyleSheet("""
@@ -250,7 +266,7 @@ class SettingsWidget(QWidget):
                     border: none;
                     border-radius: 5px;
                     font-size: 14px;
-                    min-width: 120px;
+                    min-width: 100px;
                 }
                 QPushButton:hover {
                     background-color: #F57C00;
@@ -260,11 +276,58 @@ class SettingsWidget(QWidget):
                 }
             """)
             export_button.clicked.connect(self.export_data)
-            export_layout.addWidget(export_button)
-            export_layout.addStretch()
-            main_layout.addLayout(export_layout)
+            action_buttons_layout.addWidget(export_button)
 
-        # Sync history table
+        # Save button
+        save_button = QPushButton("Save")
+        save_button.setToolTip("Save settings")
+        save_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: #FFFFFF;
+                padding: 10px;
+                border: none;
+                border-radius: 5px;
+                font-size: 14px;
+                min-width: 100px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
+        save_button.clicked.connect(self.save_settings)
+        action_buttons_layout.addWidget(save_button)
+
+        # Back button
+        back_button = QPushButton("Back")
+        back_button.setToolTip("Return to menu")
+        back_button.setStyleSheet("""
+            QPushButton {
+                background-color: #555555;
+                color: #FFFFFF;
+                padding: 10px;
+                border: none;
+                border-radius: 5px;
+                font-size: 14px;
+                min-width: 100px;
+            }
+            QPushButton:hover {
+                background-color: #666666;
+            }
+            QPushButton:pressed {
+                background-color: #444444;
+            }
+        """)
+        back_button.clicked.connect(self.main_window.show_menu)
+        action_buttons_layout.addWidget(back_button)
+
+        action_buttons_layout.addStretch()
+        scroll_layout.addLayout(action_buttons_layout)
+
+        # Sync history table - stretch to fill available space
         self.sync_table = QTableWidget()
         self.sync_table.setRowCount(0)
         self.sync_table.setColumnCount(6)
@@ -297,59 +360,13 @@ class SettingsWidget(QWidget):
         self.sync_table.setColumnWidth(3, 100)
         self.sync_table.setColumnWidth(4, 180)
         self.sync_table.setColumnWidth(5, 250)
-        self.sync_table.verticalHeader().setDefaultSectionSize(30)  # Increase row height
+        self.sync_table.verticalHeader().setDefaultSectionSize(30)
+        self.sync_table.setMinimumHeight(300)  # Ensure table has enough space
         self.update_sync_table()
-        main_layout.addWidget(self.sync_table)
+        scroll_layout.addWidget(self.sync_table)
 
-        # Buttons
-        button_layout = QHBoxLayout()
-        save_button = QPushButton("Save")
-        save_button.setToolTip("Save settings")
-        save_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: #FFFFFF;
-                padding: 10px;
-                border: none;
-                border-radius: 5px;
-                font-size: 14px;
-                min-width: 120px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-            QPushButton:pressed {
-                background-color: #3d8b40;
-            }
-        """)
-        save_button.clicked.connect(self.save_settings)
-        button_layout.addWidget(save_button)
-
-        back_button = QPushButton("Back")
-        back_button.setToolTip("Return to menu")
-        back_button.setStyleSheet("""
-            QPushButton {
-                background-color: #555555;
-                color: #FFFFFF;
-                padding: 10px;
-                border: none;
-                border-radius: 5px;
-                font-size: 14px;
-                min-width: 120px;
-            }
-            QPushButton:hover {
-                background-color: #666666;
-            }
-            QPushButton:pressed {
-                background-color: #444444;
-            }
-        """)
-        back_button.clicked.connect(self.main_window.show_menu)
-        button_layout.addWidget(back_button)
-        button_layout.addStretch()
-        main_layout.addLayout(button_layout)
-
-        main_layout.addStretch()
+        scroll_layout.addStretch()
+        scroll.setWidget(scroll_content)
 
         # Load saved settings
         config = self.db.load_config()
