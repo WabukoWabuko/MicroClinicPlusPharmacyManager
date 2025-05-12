@@ -5,8 +5,11 @@ from PyQt6.QtCore import Qt
 from db.database import Database
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus.flowables import HRFlowable
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+
 
 class SalesManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -317,51 +320,140 @@ class SalesManagementWidget(QWidget):
             QMessageBox.warning(self, "Error", str(e))
 
     def generate_receipt(self):
+        """Generate a slick PDF receipt with clean styling."""
         row = self.sales_table.currentRow()
         if row < 0:
-            QMessageBox.warning(self, "Error", "Please select a sale to generate a receipt.")
+            QMessageBox.warning(self, "Error", "Select a sale to generate receipt.")
             return
 
         sale_id = int(self.sales_table.item(row, 0).text())
         sale = self.db.get_sale(sale_id)
         patient = self.db.get_patient(sale['patient_id'])
-        sale_items = self.db.get_sale_items(sale_id)
+        sale_items = sale['items']
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save Receipt", f"sale_{sale_id}_receipt.pdf", "PDF Files (*.pdf)"
+            self, "Save Receipt", f"receipt_{sale_id}.pdf", "PDF Files (*.pdf)"
         )
         if not file_path:
             return
 
-        pdf = SimpleDocTemplate(file_path, pagesize=A4)
+        # Setup document
+        doc = SimpleDocTemplate(file_path, pagesize=A4,
+                                leftMargin=20*mm, rightMargin=20*mm,
+                                topMargin=20*mm, bottomMargin=20*mm)
+
+        # Styles
         styles = getSampleStyleSheet()
+        header_style = ParagraphStyle(
+            'Header', parent=styles['Heading1'], fontSize=18,
+            alignment=1, spaceAfter=6)
+        normal_center = ParagraphStyle(
+            'NormalCenter', parent=styles['Normal'], alignment=1, fontSize=10)
+        normal = ParagraphStyle(
+            'Normal', parent=styles['Normal'], fontSize=10, leading=12)
+        small = ParagraphStyle(
+            'Small', parent=styles['Normal'], fontSize=8, leading=10)
+
         elements = []
 
-        elements.append(Paragraph("MicroClinicPlus Pharmacy", styles['Heading1']))
-        elements.append(Paragraph(f"Sale Receipt - Sale ID: {sale_id}", styles['Heading2']))
-        elements.append(Paragraph(f"Patient: {patient['first_name']} {patient['last_name']}", styles['Normal']))
-        elements.append(Paragraph(f"Date: {sale['sale_date']}", styles['Normal']))
-        elements.append(Spacer(1, 12))
+        # Header Block
+        elements.append(Paragraph("Wabuko Health Clinic", header_style))
+        elements.append(Paragraph("123 Moi Avenue, Nairobi, Kenya", normal_center))
+        elements.append(Paragraph("Phone: +234 700 123 4567 | info@wabukohealth.ng", normal_center))
+        elements.append(Spacer(1, 4))
+        elements.append(HRFlowable(width=doc.width, thickness=0.5, color=colors.black))
+        elements.append(Spacer(1, 8))
 
-        data = [["Drug", "Quantity", "Price"]]
-        for item in sale_items:
-            data.append([item['name'], str(item['quantity']), f"{item['price']:.2f}"])
-        data.append(["Total", "", f"{sale['total_price']:.2f}"])
-
-        table = Table(data)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        # Receipt Metadata
+        receipt_id = f"RCPT-{sale['sale_date'][:10].replace('-', '')}-{sale_id:04d}"
+        meta_data = [
+            ["Receipt ID:", receipt_id],
+            ["Date:", sale['sale_date'][:10]],
+            ["Time:", sale['sale_date'][11:16]],
+            ["Issued By:", self.main_window.current_user['username']]
+        ]
+        meta_table = Table(meta_data, colWidths=[40*mm, doc.width-40*mm])
+        meta_table.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,0), (-1,-1), 10),
+            ('ALIGN', (1,0), (1,-1), 'RIGHT'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
         ]))
-        elements.append(table)
+        elements.append(meta_table)
         elements.append(Spacer(1, 12))
 
-        elements.append(Paragraph("Thank you for your purchase!", styles['Normal']))
-        pdf.build(elements)
-        QMessageBox.information(self, "Success", f"Receipt exported to {file_path}")
+        # Patient Info
+        patient_data = [
+            ["Patient Name:", f"{patient['first_name']} {patient['last_name']}"],
+            ["Patient ID:", f"PT-{patient['patient_id']:05d}"],
+            ["Date of Birth:", patient.get('dob', 'N/A')]
+        ]
+        pat_table = Table(patient_data, colWidths=[40*mm, doc.width-40*mm])
+        pat_table.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,0), (-1,-1), 10),
+            ('ALIGN', (1,0), (1,-1), 'RIGHT'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+        elements.append(pat_table)
+        elements.append(Spacer(1, 12))
+
+        # Items Table
+        data = [["#", "Item / Service", "Qty", "Unit Price", "Total"]]
+        for i, item in enumerate(sale_items, 1):
+            unit_price = item['price'] / item['quantity'] if item['quantity'] else 0
+            data.append([
+                str(i),
+                item['name'],
+                str(item['quantity']),
+                f"KSh. {unit_price:,.2f}",
+                f"KSh. {item['price']:,.2f}"
+            ])
+
+        items_table = Table(data, colWidths=[
+            10*mm, 70*mm, 15*mm, 30*mm, 30*mm
+        ])
+        items_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.darkblue),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('ALIGN', (2,1), (-1,-1), 'RIGHT'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 11),
+            ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,1), (-1,-1), 9),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('BOTTOMPADDING', (0,0), (-1,0), 6),
+            ('TOPPADDING', (0,0), (-1,0), 6),
+        ]))
+        elements.append(items_table)
+        elements.append(Spacer(1, 12))
+
+        # Summary Calculations
+        subtotal = sum(it['price'] for it in sale_items)
+        tax_rate = 0.075
+        tax = subtotal * tax_rate
+        total = subtotal + tax
+
+        summary = [
+            ["Subtotal:", f"KSh. {subtotal:,.2f}"],
+            ["Tax (7.5%):", f"KSh. {tax:,.2f}"],
+            ["Total Payable:", f"KSh. {total:,.2f}"]
+        ]
+        summary_table = Table(summary, colWidths=[doc.width-40*mm, 40*mm])
+        summary_table.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+            ('ALIGN', (1,0), (1,-1), 'RIGHT'),
+            ('FONTSIZE', (0,0), (-1,-1), 10),
+            ('LINEABOVE', (0,-1), (-1,-1), 1, colors.black),
+            ('TOPPADDING', (0,-1), (-1,-1), 6),
+        ]))
+        elements.append(summary_table)
+        elements.append(Spacer(1, 18))
+
+        # Footer
+        elements.append(Paragraph("Thank you for choosing Wabuko Health Clinic!", normal_center))
+        elements.append(Paragraph("<i>Powered by Wabuko Software</i>", small))
+
+        # Build!
+        doc.build(elements)
+        QMessageBox.information(self, "Success", f"Receipt saved to:\n{file_path}")
