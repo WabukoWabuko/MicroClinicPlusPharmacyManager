@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox, QPushButton, QMessageBox, QTableWidget, QTableWidgetItem, QLineEdit, QComboBox, QFileDialog
 from PyQt6.QtCore import Qt
+import os
 
 class SettingsWidget(QWidget):
     def __init__(self, main_window):
@@ -12,38 +13,59 @@ class SettingsWidget(QWidget):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
+        # Title
+        self.set_title("Settings")
+        title = QLabel("Settings")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF; margin: 10px;")
+        main_layout.addWidget(title)
+
+        # Card for Settings
+        card = QWidget()
+        card_layout = QVBoxLayout(card)
+        card.setStyleSheet("""
+            QWidget {
+                background-color: #1E1E1E;
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            }
+        """)
+
         # Clinic name
         clinic_layout = QHBoxLayout()
         clinic_label = QLabel("Clinic Name:")
-        clinic_label.setStyleSheet("font-size: 14px;")
+        clinic_label.setStyleSheet("font-size: 14px; color: #FFFFFF;")
         self.clinic_input = QLineEdit()
         self.clinic_input.setPlaceholderText("Enter clinic name")
         self.clinic_input.setToolTip("Name of the clinic for receipts")
         self.clinic_input.setStyleSheet("""
             QLineEdit {
-                padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                padding: 8px;
+                border: 1px solid #4CAF50;
+                border-radius: 5px;
                 font-size: 14px;
+                background-color: #2E2E2E;
+                color: #FFFFFF;
             }
         """)
         clinic_layout.addWidget(clinic_label)
         clinic_layout.addWidget(self.clinic_input)
-        main_layout.addLayout(clinic_layout)
+        card_layout.addLayout(clinic_layout)
 
         # Logo
         logo_layout = QHBoxLayout()
         logo_label = QLabel("Receipt Logo:")
-        logo_label.setStyleSheet("font-size: 14px;")
+        logo_label.setStyleSheet("font-size: 14px; color: #FFFFFF;")
         self.logo_button = QPushButton("Choose Logo")
         self.logo_button.setToolTip("Select a PNG or JPG logo for receipts")
         self.logo_button.setStyleSheet("""
             QPushButton {
                 background-color: #2196F3;
-                color: white;
-                padding: 6px 12px;
+                color: #FFFFFF;
+                padding: 8px 16px;
                 border: none;
-                border-radius: 4px;
+                border-radius: 5px;
                 font-size: 14px;
             }
             QPushButton:hover {
@@ -55,30 +77,32 @@ class SettingsWidget(QWidget):
         """)
         self.logo_button.clicked.connect(self.choose_logo)
         self.logo_label = QLabel("No logo selected")
-        self.logo_label.setStyleSheet("font-size: 12px; color: #555555;")
+        self.logo_label.setStyleSheet("font-size: 12px; color: #FFFFFF;")
         logo_layout.addWidget(logo_label)
         logo_layout.addWidget(self.logo_button)
         logo_layout.addWidget(self.logo_label)
-        main_layout.addLayout(logo_layout)
+        card_layout.addLayout(logo_layout)
 
         # Currency symbol
         currency_layout = QHBoxLayout()
         currency_label = QLabel("Currency Symbol:")
-        currency_label.setStyleSheet("font-size: 14px;")
+        currency_label.setStyleSheet("font-size: 14px; color: #FFFFFF;")
         self.currency_combo = QComboBox()
         self.currency_combo.addItems(["KSh", "$", "£", "€", "₹", "¥", "A$"])
         self.currency_combo.setToolTip("Select currency symbol for receipts")
         self.currency_combo.setStyleSheet("""
             QComboBox {
-                padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                padding: 8px;
+                border: 1px solid #4CAF50;
+                border-radius: 5px;
                 font-size: 14px;
+                background-color: #2E2E2E;
+                color: #FFFFFF;
             }
         """)
         currency_layout.addWidget(currency_label)
         currency_layout.addWidget(self.currency_combo)
-        main_layout.addLayout(currency_layout)
+        card_layout.addLayout(currency_layout)
 
         # Load saved settings
         config = self.db.load_config()
@@ -94,20 +118,21 @@ class SettingsWidget(QWidget):
         self.sync_toggle.setStyleSheet("""
             QCheckBox {
                 font-size: 14px;
+                color: #FFFFFF;
             }
         """)
         sync_layout.addWidget(self.sync_toggle)
-        main_layout.addLayout(sync_layout)
+        card_layout.addLayout(sync_layout)
 
         # Sync status
         self.status_label = QLabel(self.get_sync_status())
-        self.status_label.setStyleSheet("font-size: 12px; color: #555555;")
-        main_layout.addWidget(self.status_label)
+        self.status_label.setStyleSheet("font-size: 12px; color: #FFFFFF;")
+        card_layout.addWidget(self.status_label)
 
         # Sync message
         sync_message = QLabel("Syncing is automatic when enabled, but you can sync manually using the button below.")
-        sync_message.setStyleSheet("font-size: 12px; color: #555555; font-style: italic;")
-        main_layout.addWidget(sync_message)
+        sync_message.setStyleSheet("font-size: 12px; color: #FFFFFF; font-style: italic;")
+        card_layout.addWidget(sync_message)
 
         # Sync now button
         sync_now_button = QPushButton("Sync Now")
@@ -115,11 +140,12 @@ class SettingsWidget(QWidget):
         sync_now_button.setStyleSheet("""
             QPushButton {
                 background-color: #2196F3;
-                color: white;
-                padding: 8px 16px;
+                color: #FFFFFF;
+                padding: 10px;
                 border: none;
-                border-radius: 4px;
+                border-radius: 5px;
                 font-size: 14px;
+                min-width: 150px;
             }
             QPushButton:hover {
                 background-color: #1976D2;
@@ -129,7 +155,7 @@ class SettingsWidget(QWidget):
             }
         """)
         sync_now_button.clicked.connect(self.manual_sync)
-        main_layout.addWidget(sync_now_button)
+        card_layout.addWidget(sync_now_button)
 
         # Sync history table
         self.sync_table = QTableWidget()
@@ -138,16 +164,19 @@ class SettingsWidget(QWidget):
         self.sync_table.setHorizontalHeaderLabels(["Table", "Operation", "Record ID", "Status", "Timestamp", "Details"])
         self.sync_table.setStyleSheet("""
             QTableWidget {
-                border: 1px solid #cccccc;
+                border: 1px solid #4CAF50;
                 font-size: 12px;
+                background-color: #2E2E2E;
+                color: #FFFFFF;
             }
             QTableWidget::item {
                 padding: 4px;
             }
             QHeaderView::section {
-                background-color: #f0f0f0;
+                background-color: #000000;
+                color: #FFFFFF;
                 padding: 4px;
-                border: 1px solid #cccccc;
+                border: 1px solid #4CAF50;
                 font-size: 12px;
             }
         """)
@@ -161,7 +190,7 @@ class SettingsWidget(QWidget):
         self.sync_table.setColumnWidth(4, 150)
         self.sync_table.setColumnWidth(5, 200)
         self.update_sync_table()
-        main_layout.addWidget(self.sync_table)
+        card_layout.addWidget(self.sync_table)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -170,11 +199,12 @@ class SettingsWidget(QWidget):
         save_button.setStyleSheet("""
             QPushButton {
                 background-color: #4CAF50;
-                color: white;
-                padding: 8px 16px;
+                color: #FFFFFF;
+                padding: 10px;
                 border: none;
-                border-radius: 4px;
+                border-radius: 5px;
                 font-size: 14px;
+                min-width: 150px;
             }
             QPushButton:hover {
                 background-color: #45a049;
@@ -183,16 +213,20 @@ class SettingsWidget(QWidget):
                 background-color: #3d8b40;
             }
         """)
+        save_button.clicked.connect(self.save_settings)
+        button_layout.addWidget(save_button)
+
         back_button = QPushButton("Back")
         back_button.setToolTip("Return to menu")
         back_button.setStyleSheet("""
             QPushButton {
                 background-color: #555555;
-                color: white;
-                padding: 8px 16px;
+                color: #FFFFFF;
+                padding: 10px;
                 border: none;
-                border-radius: 4px;
+                border-radius: 5px;
                 font-size: 14px;
+                min-width: 150px;
             }
             QPushButton:hover {
                 background-color: #666666;
@@ -201,13 +235,17 @@ class SettingsWidget(QWidget):
                 background-color: #444444;
             }
         """)
-        save_button.clicked.connect(self.save_settings)
         back_button.clicked.connect(self.main_window.show_menu)
-        button_layout.addWidget(save_button)
         button_layout.addWidget(back_button)
-        main_layout.addLayout(button_layout)
+        button_layout.addStretch()
+        card_layout.addLayout(button_layout)
 
+        card_layout.addStretch()
+        main_layout.addWidget(card)
         main_layout.addStretch()
+
+    def set_title(self, title):
+        self.main_window.set_title(title)
 
     def choose_logo(self):
         """Open file dialog to choose a logo image."""
