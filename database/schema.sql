@@ -4,7 +4,9 @@ DROP TABLE IF EXISTS sales;
 DROP TABLE IF EXISTS prescriptions;
 DROP TABLE IF EXISTS drugs;
 DROP TABLE IF EXISTS patients;
+DROP TABLE IF EXISTS suppliers;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS sync_queue;
 
 -- Users table: Stores admin and staff accounts
 CREATE TABLE users (
@@ -40,6 +42,23 @@ CREATE TABLE drugs (
     batch_number TEXT NOT NULL,
     expiry_date TEXT NOT NULL,
     price REAL NOT NULL CHECK (price >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_synced INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'pending'
+);
+
+-- Suppliers table: Stores supplier information
+CREATE TABLE suppliers (
+    supplier_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    phone TEXT,
+    email TEXT,
+    address TEXT,
+    products_supplied TEXT,
+    last_delivery_date TEXT,
+    responsible_person TEXT,
+    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_synced INTEGER DEFAULT 0,
@@ -93,15 +112,6 @@ CREATE TABLE sale_items (
     FOREIGN KEY (drug_id) REFERENCES drugs(drug_id) ON DELETE CASCADE
 );
 
--- Indexes for performance
-CREATE INDEX idx_patients_contact ON patients(contact);
-CREATE INDEX idx_drugs_name ON drugs(name);
-CREATE INDEX idx_prescriptions_patient_id ON prescriptions(patient_id);
-CREATE INDEX idx_prescriptions_drug_id ON prescriptions(drug_id);
-CREATE INDEX idx_sales_patient_id ON sales(patient_id);
-CREATE INDEX idx_sales_sale_date ON sales(sale_date);
-CREATE INDEX idx_sale_items_sale_id ON sale_items(sale_id);
-
 -- Sync queue table
 CREATE TABLE sync_queue (
     queue_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,3 +122,14 @@ CREATE TABLE sync_queue (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status TEXT DEFAULT 'pending'
 );
+
+-- Indexes for performance
+CREATE INDEX idx_patients_contact ON patients(contact);
+CREATE INDEX idx_patients_name ON patients(first_name, last_name);
+CREATE INDEX idx_drugs_name ON drugs(name);
+CREATE INDEX idx_prescriptions_patient_id ON prescriptions(patient_id);
+CREATE INDEX idx_prescriptions_drug_id ON prescriptions(drug_id);
+CREATE INDEX idx_suppliers_name ON suppliers(name);
+CREATE INDEX idx_sales_patient_id ON sales(patient_id);
+CREATE INDEX idx_sales_sale_date ON sales(sale_date);
+CREATE INDEX idx_sale_items_sale_id ON sale_items(sale_id);
