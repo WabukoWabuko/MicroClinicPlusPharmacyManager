@@ -190,8 +190,8 @@ class LoginWidget(QWidget):
 
         main_layout.addStretch()
 
-    def set_title(self):
-        self.main_window.set_title("Login")
+    def set_title(self, title):
+        self.main_window.set_title(title)
 
     def login(self):
         username = self.username_input.text().strip()
