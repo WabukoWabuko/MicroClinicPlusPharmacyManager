@@ -27,16 +27,22 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
 
-        # Add a top bar for the status dot
+        # Add a top bar for the heading and status dot
         self.top_bar = QHBoxLayout()
         self.layout.addLayout(self.top_bar)
 
-        # Status dot
-        self.status_dot = QLabel("●")
-        self.status_dot.setStyleSheet("font-size: 14px; margin: 5px 10px;")
+        # Title at the topmost position
+        title = QLabel("MicroClinic Plus Pharmacy Manager")
+        title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF; margin: 10px;")
+        self.top_bar.addWidget(title)
+
+        # Status dot with dynamic text
+        self.status_label = QLabel()
+        self.status_label.setStyleSheet("font-size: 14px; margin: 5px 10px;")
         self.update_status_dot()
-        self.top_bar.addStretch()
-        self.top_bar.addWidget(self.status_dot)
+        self.top_bar.addStretch()  # Push status to the right
+        self.top_bar.addWidget(self.status_label)
 
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
@@ -45,10 +51,12 @@ class MainWindow(QMainWindow):
         self.show_login()
 
     def update_status_dot(self):
-        """Update the status dot color based on online/offline status."""
+        """Update the status dot and text based on online/offline status."""
         is_online = self.db.is_online()
         color = "#00FF00" if is_online else "#FF0000"  # Green for online, red for offline
-        self.status_dot.setStyleSheet(f"color: {color}; font-size: 14px; margin: 5px 10px;")
+        status_text = "Online" if is_online else "Offline"
+        self.status_label.setText(f"● {status_text}")
+        self.status_label.setStyleSheet(f"color: {color}; font-size: 14px; margin: 5px 10px;")
 
     def show_login(self):
         self.clear_content()
@@ -63,10 +71,6 @@ class MainWindow(QMainWindow):
         menu_layout = QVBoxLayout(menu_widget)
 
         self.set_title("Menu")
-        title = QLabel("MicroClinic Plus Pharmacy Manager")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF; margin: 10px;")
-        menu_layout.addWidget(title)
 
         card = QWidget()
         card_layout = QVBoxLayout(card)
