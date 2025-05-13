@@ -59,37 +59,9 @@ class SalesManagementWidget(QWidget):
         # Searchable patient combo
         self.patient_search_combo = SearchableComboBox()
         self.patient_search_combo.setToolTip("Search or select patient")
-        # Shortlist patient combo
-        self.patient_shortlist_combo = QComboBox()
-        self.patient_shortlist_combo.setToolTip("Select from frequent patients")
-        self.patient_shortlist_combo.setStyleSheet("""
-            QComboBox {
-                padding: 8px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                font-size: 14px;
-            }
-            QComboBox:focus {
-                border: 1px solid #4CAF50;
-            }
-        """)
         # Searchable drug combo
         self.drug_search_combo = SearchableComboBox()
         self.drug_search_combo.setToolTip("Search or select drug")
-        # Shortlist drug combo
-        self.drug_shortlist_combo = QComboBox()
-        self.drug_shortlist_combo.setToolTip("Select from frequent drugs")
-        self.drug_shortlist_combo.setStyleSheet("""
-            QComboBox {
-                padding: 8px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                font-size: 14px;
-            }
-            QComboBox:focus {
-                border: 1px solid #4CAF50;
-            }
-        """)
         self.quantity_input = QLineEdit()
         self.quantity_input.setPlaceholderText("Enter quantity")
         self.quantity_input.setToolTip("Enter quantity sold")
@@ -141,14 +113,10 @@ class SalesManagementWidget(QWidget):
         """)
         self.payment_mode_combo.setCurrentText("Cash")  # Default to Cash
 
-        left_form.addWidget(QLabel("Patient (Search):"))
+        left_form.addWidget(QLabel("Patient:"))
         left_form.addWidget(self.patient_search_combo)
-        left_form.addWidget(QLabel("Patient (Shortlist):"))
-        left_form.addWidget(self.patient_shortlist_combo)
-        right_form.addWidget(QLabel("Drug (Search):"))
+        right_form.addWidget(QLabel("Drug:"))
         right_form.addWidget(self.drug_search_combo)
-        right_form.addWidget(QLabel("Drug (Shortlist):"))
-        right_form.addWidget(self.drug_shortlist_combo)
         right_form.addWidget(QLabel("Quantity:"))
         right_form.addWidget(self.quantity_input)
         right_form.addWidget(QLabel("Currency:"))
@@ -319,12 +287,6 @@ class SalesManagementWidget(QWidget):
         self.patient_search_combo.addItem("Select Patient")
         for patient in patients:
             self.patient_search_combo.addItem(f"{patient['first_name']} {patient['last_name']}", patient['patient_id'])
-        # Load patient shortlist (top 5)
-        top_patients = self.db.get_top_patients(5)  # Assuming this method exists
-        self.patient_shortlist_combo.clear()
-        self.patient_shortlist_combo.addItem("Select Frequent Patient")
-        for patient in top_patients:
-            self.patient_shortlist_combo.addItem(f"{patient['first_name']} {patient['last_name']}", patient['patient_id'])
 
         # Load drugs
         drugs = self.db.get_all_drugs()
@@ -332,12 +294,6 @@ class SalesManagementWidget(QWidget):
         self.drug_search_combo.addItem("Select Drug")
         for drug in drugs:
             self.drug_search_combo.addItem(drug['name'], drug['drug_id'])
-        # Load drug shortlist (top 5)
-        top_drugs = self.db.get_top_drugs(5)  # Assuming this method exists
-        self.drug_shortlist_combo.clear()
-        self.drug_shortlist_combo.addItem("Select Frequent Drug")
-        for drug in top_drugs:
-            self.drug_shortlist_combo.addItem(drug['name'], drug['drug_id'])
 
         # Load sales
         sales = self.db.get_all_sales()
@@ -350,12 +306,12 @@ class SalesManagementWidget(QWidget):
             self.sales_table.setItem(row, 3, QTableWidgetItem(sale['sale_date']))
 
     def add_sale_item(self):
-        drug_id = self.drug_search_combo.currentData() or self.drug_shortlist_combo.currentData()
+        drug_id = self.drug_search_combo.currentData()
         quantity = self.quantity_input.text().strip()
         selected_currency = self.currency_combo.currentText()
         rate = self.exchange_rates[selected_currency]
 
-        if not drug_id or (self.drug_search_combo.currentText() == "Select Drug" and self.drug_shortlist_combo.currentText() == "Select Frequent Drug"):
+        if not drug_id or self.drug_search_combo.currentText() == "Select Drug":
             QMessageBox.warning(self, "Error", "Please select a drug.")
             return
         if not quantity:
@@ -373,6 +329,24 @@ class SalesManagementWidget(QWidget):
         drug = self.db.get_drug(drug_id)
         if drug['quantity'] < quantity_val:
             QMessageBox.warning(self, "Error", f"Insufficient stock for {drug['name']}. Available: {drug['quantity']}")
+            return
+
+        # Reduce stock immediately when adding the item
+        try:
+            warning = self.db.reduce_drug_stock(drug_id, quantity_val)
+            if warning:
+                remaining = drug['quantity'] - quantity_val
+                message = f"Stock for {drug['name']} is low. Remaining: {remaining} units."
+                # Use a non-blocking QMessageBox with a timer
+                msg_box = QMessageBox(self)
+                msg_box.setWindowTitle("Low Stock Warning")
+                msg_box.setText(message)
+                msg_box.setStandardButtons(QMessageBox.StandardButton.NoButton)
+                # Ensure the message box is shown and the timer starts
+                msg_box.show()
+                QTimer.singleShot(2000, lambda: msg_box.done(0))  # Use done(0) to properly close the dialog
+        except ValueError as e:
+            QMessageBox.warning(self, "Error", str(e))
             return
 
         price_in_ksh = drug['price'] * quantity_val
@@ -395,13 +369,23 @@ class SalesManagementWidget(QWidget):
         self.quantity_input.clear()
 
     def clear_sale_items(self):
+        # Restore stock for each item in the sale_items list
+        for item in self.sale_items:
+            drug_id = item['drug_id']
+            quantity = item['quantity']
+            # Increase stock by the quantity that was deducted
+            drug = self.db.get_drug(drug_id)
+            if drug:
+                new_quantity = drug['quantity'] + quantity
+                self.db.update_drug(drug_id, new_quantity, drug['batch_number'], drug['expiry_date'], drug['price'])
+
         self.sale_items = []
         self.sale_items_table.setRowCount(0)
         self.quantity_input.clear()
 
     def complete_sale(self):
-        patient_id = self.patient_search_combo.currentData() or self.patient_shortlist_combo.currentData()
-        if not patient_id or (self.patient_search_combo.currentText() == "Select Patient" and self.patient_shortlist_combo.currentText() == "Select Frequent Patient"):
+        patient_id = self.patient_search_combo.currentData()
+        if not patient_id or self.patient_search_combo.currentText() == "Select Patient":
             QMessageBox.warning(self, "Error", "Please select a patient.")
             return
         if not self.sale_items:
@@ -411,13 +395,6 @@ class SalesManagementWidget(QWidget):
         total_price = sum(item['price'] for item in self.sale_items)  # Total in KSh
         mode_of_payment = self.payment_mode_combo.currentText()  # Get selected payment mode
         try:
-            # Check stock before proceeding
-            for item in self.sale_items:
-                drug = self.db.get_drug(item['drug_id'])
-                if drug['quantity'] < item['quantity']:
-                    QMessageBox.warning(self, "Error", f"Insufficient stock for {drug['name']}. Available: {drug['quantity']}")
-                    return
-
             # Record the sale
             sale_id = self.db.add_sale(
                 patient_id=patient_id,
@@ -432,24 +409,11 @@ class SalesManagementWidget(QWidget):
                     quantity=item['quantity'],
                     price=item['price']  # Store in KSh
                 )
-                # Reduce stock using reduce_drug_stock
-                warning = self.db.reduce_drug_stock(item['drug_id'], item['quantity'])
-                if warning:
-                    # Extract remaining quantity from the warning message
-                    drug = self.db.get_drug(item['drug_id'])
-                    remaining = drug['quantity']
-                    message = f"Stock for {item['name']} is low. Remaining: {remaining} units."
-                    msg_box = QMessageBox(self)
-                    msg_box.setWindowTitle("Low Stock Warning")
-                    msg_box.setText(message)
-                    msg_box.setStandardButtons(QMessageBox.StandardButton.NoButton)  # No buttons to auto-close
-                    msg_box.show()
-                    # Auto-close after 2 seconds (2000 milliseconds)
-                    QTimer.singleShot(2000, msg_box.close)
 
             QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
             self.load_data()  # This will update the sales_table immediately
-            self.clear_sale_items()
+            self.sale_items = []  # Clear sale_items without restoring stock
+            self.sale_items_table.setRowCount(0)
         except ValueError as e:
             QMessageBox.warning(self, "Error", str(e))
 
