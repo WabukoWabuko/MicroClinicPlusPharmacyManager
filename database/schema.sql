@@ -19,7 +19,10 @@ CREATE TABLE users (
     last_login TIMESTAMP,
     is_synced INTEGER DEFAULT 0,
     sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed')),
-    CONSTRAINT username_not_empty CHECK (TRIM(username) != '')
+    CONSTRAINT username_not_empty CHECK (TRIM(username) != ''),
+    CONSTRAINT created_at_format CHECK (created_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]'),
+    CONSTRAINT updated_at_format CHECK (updated_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]'),
+    CONSTRAINT last_login_format CHECK (last_login IS NULL OR last_login GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]')
 );
 
 -- Patients table: Stores patient information
@@ -38,7 +41,9 @@ CREATE TABLE patients (
     CONSTRAINT first_name_not_empty CHECK (TRIM(first_name) != ''),
     CONSTRAINT last_name_not_empty CHECK (TRIM(last_name) != ''),
     CONSTRAINT contact_not_empty CHECK (TRIM(contact) != ''),
-    CONSTRAINT contact_format CHECK (contact GLOB '+[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
+    CONSTRAINT contact_format CHECK (contact GLOB '+[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
+    CONSTRAINT registration_date_format CHECK (registration_date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]'),
+    CONSTRAINT updated_at_format CHECK (updated_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]')
 );
 
 -- Drugs table: Stores inventory details
@@ -55,7 +60,9 @@ CREATE TABLE drugs (
     sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed')),
     CONSTRAINT name_not_empty CHECK (TRIM(name) != ''),
     CONSTRAINT batch_number_not_empty CHECK (TRIM(batch_number) != ''),
-    CONSTRAINT expiry_date_not_empty CHECK (TRIM(expiry_date) != '')
+    CONSTRAINT expiry_date_not_empty CHECK (TRIM(expiry_date) != ''),
+    CONSTRAINT created_at_format CHECK (created_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]'),
+    CONSTRAINT updated_at_format CHECK (updated_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]')
 );
 
 -- Suppliers table: Stores supplier information
@@ -73,7 +80,9 @@ CREATE TABLE suppliers (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_synced INTEGER DEFAULT 0,
     sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed')),
-    CONSTRAINT name_not_empty CHECK (TRIM(name) != '')
+    CONSTRAINT name_not_empty CHECK (TRIM(name) != ''),
+    CONSTRAINT created_at_format CHECK (created_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]'),
+    CONSTRAINT updated_at_format CHECK (updated_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]')
 );
 
 -- Prescriptions table: Stores prescription records
@@ -98,7 +107,9 @@ CREATE TABLE prescriptions (
     CONSTRAINT diagnosis_not_empty CHECK (TRIM(diagnosis) != ''),
     CONSTRAINT dosage_not_empty CHECK (TRIM(dosage) != ''),
     CONSTRAINT frequency_not_empty CHECK (TRIM(frequency) != ''),
-    CONSTRAINT duration_not_empty CHECK (TRIM(duration) != '')
+    CONSTRAINT duration_not_empty CHECK (TRIM(duration) != ''),
+    CONSTRAINT prescription_date_format CHECK (prescription_date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]'),
+    CONSTRAINT updated_at_format CHECK (updated_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]')
 );
 
 -- Sales table: Stores sale transactions
@@ -114,7 +125,9 @@ CREATE TABLE sales (
     sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed')),
     FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL,
-    CONSTRAINT mode_of_payment_not_empty CHECK (TRIM(mode_of_payment) != '')
+    CONSTRAINT mode_of_payment_not_empty CHECK (TRIM(mode_of_payment) != ''),
+    CONSTRAINT sale_date_format CHECK (sale_date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]'),
+    CONSTRAINT updated_at_format CHECK (updated_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]')
 );
 
 -- Sale Items table: Stores individual items in a sale
@@ -128,7 +141,8 @@ CREATE TABLE sale_items (
     is_synced INTEGER DEFAULT 0,
     sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed')),
     FOREIGN KEY (sale_id) REFERENCES sales(sale_id) ON DELETE CASCADE,
-    FOREIGN KEY (drug_id) REFERENCES drugs(drug_id) ON DELETE CASCADE
+    FOREIGN KEY (drug_id) REFERENCES drugs(drug_id) ON DELETE CASCADE,
+    CONSTRAINT updated_at_format CHECK (updated_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]')
 );
 
 -- Sync queue table
@@ -140,7 +154,8 @@ CREATE TABLE sync_queue (
     data TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'synced', 'failed')),
-    CONSTRAINT table_name_not_empty CHECK (TRIM(table_name) != '')
+    CONSTRAINT table_name_not_empty CHECK (TRIM(table_name) != ''),
+    CONSTRAINT created_at_format CHECK (created_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]')
 );
 
 -- Indexes for performance

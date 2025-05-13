@@ -140,7 +140,8 @@ CREATE TABLE sync_queue (
     data JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'synced', 'failed')),
-    CONSTRAINT table_name_not_empty CHECK (TRIM(table_name) != '')
+    CONSTRAINT table_name_not_empty CHECK (TRIM(table_name) != ''),
+    CONSTRAINT data_is_jsonb CHECK (data IS NULL OR jsonb_typeof(data) IS NOT NULL)
 );
 
 -- Indexes for performance
