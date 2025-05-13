@@ -27,17 +27,35 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
 
+        # Add a top bar for the status dot
+        self.top_bar = QHBoxLayout()
+        self.layout.addLayout(self.top_bar)
+
+        # Status dot
+        self.status_dot = QLabel("●")
+        self.status_dot.setStyleSheet("font-size: 14px; margin: 5px 10px;")
+        self.update_status_dot()
+        self.top_bar.addStretch()
+        self.top_bar.addWidget(self.status_dot)
+
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
         self.layout.addWidget(self.content_widget)
 
         self.show_login()
 
+    def update_status_dot(self):
+        """Update the status dot color based on online/offline status."""
+        is_online = self.db.is_online()
+        color = "#00FF00" if is_online else "#FF0000"  # Green for online, red for offline
+        self.status_dot.setStyleSheet(f"color: {color}; font-size: 14px; margin: 5px 10px;")
+
     def show_login(self):
         self.clear_content()
         login_widget = LoginWidget(self)
         self.content_layout.addWidget(login_widget)
         self.set_title("Login")
+        self.update_status_dot()
 
     def show_menu(self):
         self.clear_content()
@@ -61,6 +79,10 @@ class MainWindow(QMainWindow):
             }
         """)
 
+        # Grid layout for square buttons
+        button_grid = QHBoxLayout()
+        button_grid.setSpacing(10)  # Space between buttons
+
         button_style = """
             QPushButton {
                 background-color: #4CAF50;
@@ -69,8 +91,9 @@ class MainWindow(QMainWindow):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 180px;
-                margin: 5px 0;
+                width: 120px;
+                height: 120px;
+                margin: 5px;
             }
             QPushButton:hover {
                 background-color: #45a049;
@@ -81,25 +104,31 @@ class MainWindow(QMainWindow):
         """
 
         buttons = [
-            ("Patient Management", self.show_patient_management),
-            ("Inventory Management", self.show_inventory_management),
-            ("Prescription Logging", self.show_prescription_logging),
-            ("Sales Management", self.show_sales_management),
-            ("Supplier Management", self.show_supplier_management),
+            ("Patient\nManagement", self.show_patient_management),
+            ("Inventory\nManagement", self.show_inventory_management),
+            ("Prescription\nLogging", self.show_prescription_logging),
+            ("Sales\nManagement", self.show_sales_management),
+            ("Supplier\nManagement", self.show_supplier_management),
         ]
         if self.current_user and self.current_user['role'] == 'admin':
-            buttons.append(("User Management", self.show_user_management))
+            buttons.append(("User\nManagement", self.show_user_management))
         buttons.extend([
             ("Settings", self.show_settings),
-            ("Reporting Dashboard", self.show_dashboard),
+            ("Reporting\nDashboard", self.show_dashboard),
         ])
 
+        # Add buttons to the grid (side by side)
         for text, action in buttons:
             button = QPushButton(text)
             button.setStyleSheet(button_style)
-            button.setToolTip(f"Navigate to {text.lower()}")
+            button.setToolTip(f"Navigate to {text.lower().replace('\n', ' ')}")
             button.clicked.connect(action)
-            card_layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignCenter)
+            button_grid.addWidget(button)
+
+        card_layout.addLayout(button_grid)
+
+        # Layout for toggle and logout buttons (side by side)
+        bottom_buttons_layout = QHBoxLayout()
 
         contrast_button = QPushButton("Toggle High Contrast")
         contrast_button.setStyleSheet("""
@@ -110,8 +139,8 @@ class MainWindow(QMainWindow):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 180px;
-                margin: 5px 0;
+                width: 150px;
+                margin: 5px;
             }
             QPushButton:hover {
                 background-color: #666666;
@@ -122,7 +151,7 @@ class MainWindow(QMainWindow):
         """)
         contrast_button.setToolTip("Toggle high contrast mode")
         contrast_button.clicked.connect(self.toggle_contrast)
-        card_layout.addWidget(contrast_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        bottom_buttons_layout.addWidget(contrast_button)
 
         logout_button = QPushButton("Logout")
         logout_button.setStyleSheet("""
@@ -133,8 +162,8 @@ class MainWindow(QMainWindow):
                 border: none;
                 border-radius: 5px;
                 font-size: 14px;
-                min-width: 180px;
-                margin: 5px 0;
+                width: 150px;
+                margin: 5px;
             }
             QPushButton:hover {
                 background-color: #da190b;
@@ -145,11 +174,13 @@ class MainWindow(QMainWindow):
         """)
         logout_button.setToolTip("Log out of the application")
         logout_button.clicked.connect(self.show_login)
-        card_layout.addWidget(logout_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        bottom_buttons_layout.addWidget(logout_button)
 
+        card_layout.addLayout(bottom_buttons_layout)
         card_layout.addStretch()
         menu_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
         self.content_layout.addWidget(menu_widget)
+        self.update_status_dot()
 
     def clear_content(self):
         while self.content_layout.count():
@@ -162,48 +193,56 @@ class MainWindow(QMainWindow):
         widget = PatientManagementWidget(self)
         self.content_layout.addWidget(widget)
         self.set_title("Patient Management")
+        self.update_status_dot()
 
     def show_inventory_management(self):
         self.clear_content()
         widget = InventoryManagementWidget(self)
         self.content_layout.addWidget(widget)
         self.set_title("Inventory Management")
+        self.update_status_dot()
 
     def show_prescription_logging(self):
         self.clear_content()
         widget = PrescriptionLoggingWidget(self)
         self.content_layout.addWidget(widget)
         self.set_title("Prescription Logging")
+        self.update_status_dot()
 
     def show_sales_management(self):
         self.clear_content()
         widget = SalesManagementWidget(self)
         self.content_layout.addWidget(widget)
         self.set_title("Sales Management")
+        self.update_status_dot()
 
     def show_supplier_management(self):
         self.clear_content()
         widget = SupplierManagementWidget(self)
         self.content_layout.addWidget(widget)
         self.set_title("Supplier Management")
+        self.update_status_dot()
 
     def show_user_management(self):
         self.clear_content()
         widget = UserManagementWidget(self)
         self.content_layout.addWidget(widget)
         self.set_title("User Management")
+        self.update_status_dot()
 
     def show_settings(self):
         self.clear_content()
         widget = SettingsWidget(self)
         self.content_layout.addWidget(widget)
         self.set_title("Settings")
+        self.update_status_dot()
 
     def show_dashboard(self):
         self.clear_content()
         widget = ReportingDashboardWidget(self)
         self.content_layout.addWidget(widget)
         self.set_title("Reporting Dashboard")
+        self.update_status_dot()
 
     def toggle_contrast(self):
         self.is_high_contrast = not self.is_high_contrast
