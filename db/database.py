@@ -462,23 +462,7 @@ class Database:
         prescription = cursor.fetchone()
         conn.close()
         return dict(prescription) if prescription else None
-    
-    def update_prescription(self, prescription_id, patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed):
-        conn = self.connect()
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE prescriptions SET patient_id = ?, user_id = ?, diagnosis = ?, notes = ?, drug_id = ?, dosage = ?, frequency = ?, duration = ?, quantity_prescribed = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
-            WHERE prescription_id = ?
-        """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, datetime.now().isoformat(), prescription_id))
-        conn.commit()
-        conn.close()
-        self.queue_sync_operation('prescriptions', 'UPDATE', prescription_id, {
-            'prescription_id': prescription_id, 'patient_id': patient_id, 'user_id': user_id, 'diagnosis': diagnosis,
-            'notes': notes, 'drug_id': drug_id, 'dosage': dosage, 'frequency': frequency, 'duration': duration,
-            'quantity_prescribed': quantity_prescribed, 'updated_at': datetime.now().isoformat(),
-            'is_synced': False, 'sync_status': 'pending'
-        })
-        
+
     def delete_prescription(self, prescription_id):
         conn = self.connect()
         cursor = conn.cursor()
@@ -486,22 +470,41 @@ class Database:
         conn.commit()
         conn.close()
         self.queue_sync_operation('prescriptions', 'DELETE', prescription_id, {})
+    
+    def update_prescription(self, prescription_id, patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE prescriptions SET patient_id = ?, user_id = ?, diagnosis = ?, notes = ?, drug_id = ?, dosage = ?, frequency = ?, duration = ?, quantity_prescribed = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
+            WHERE prescription_id = ?
+        """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, datetime.datetime.now().isoformat(), prescription_id))
+        conn.commit()
+        conn.close()
+        self.queue_sync_operation('prescriptions', 'UPDATE', prescription_id, {
+            'prescription_id': prescription_id, 'patient_id': patient_id, 'user_id': user_id, 'diagnosis': diagnosis,
+            'notes': notes, 'drug_id': drug_id, 'dosage': dosage, 'frequency': frequency, 'duration': duration,
+            'quantity_prescribed': quantity_prescribed, 'updated_at': datetime.datetime.now().isoformat(),
+            'is_synced': False, 'sync_status': 'pending'
+        })
+        
 
     def add_prescription(self, patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed):
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, prescription_date, is_synced, sync_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 0, 'pending')
-        """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed))
+            INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, prescription_date, updated_at, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')
+        """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, datetime.datetime.now().isoformat(), datetime.datetime.now().isoformat()))
+        prescription_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        self.queue_sync_operation('prescriptions', 'INSERT', cursor.lastrowid, {
-            'patient_id': patient_id, 'user_id': user_id, 'diagnosis': diagnosis, 'notes': notes,
-            'drug_id': drug_id, 'dosage': dosage, 'frequency': frequency, 'duration': duration,
-            'quantity_prescribed': quantity_prescribed, 'prescription_date': datetime.now().isoformat(),
-            'is_synced': False, 'sync_status': 'pending'
+        self.queue_sync_operation('prescriptions', 'INSERT', prescription_id, {
+            'prescription_id': prescription_id, 'patient_id': patient_id, 'user_id': user_id, 'diagnosis': diagnosis,
+            'notes': notes, 'drug_id': drug_id, 'dosage': dosage, 'frequency': frequency, 'duration': duration,
+            'quantity_prescribed': quantity_prescribed, 'prescription_date': datetime.datetime.now().isoformat(),
+            'updated_at': datetime.datetime.now().isoformat(), 'is_synced': False, 'sync_status': 'pending'
         })
+        return prescription_id
 
     def get_all_sales(self):
         """Retrieve all sales."""
