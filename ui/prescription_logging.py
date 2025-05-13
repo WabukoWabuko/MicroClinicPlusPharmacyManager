@@ -171,6 +171,42 @@ class PrescriptionLoggingWidget(QWidget):
                 background-color: #3d8b40;
             }
         """)
+        edit_button = QPushButton("Edit Prescription")
+        edit_button.setToolTip("Edit selected prescription")
+        edit_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #1565C0;
+            }
+        """)
+        delete_button = QPushButton("Delete Prescription")
+        delete_button.setToolTip("Delete selected prescription")
+        delete_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f44336;
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #d32f2f;
+            }
+            QPushButton:pressed {
+                background-color: #b71c1c;
+            }
+        """)
         clear_button = QPushButton("Clear")
         clear_button.setToolTip("Clear form")
         clear_button.setStyleSheet("""
@@ -208,9 +244,13 @@ class PrescriptionLoggingWidget(QWidget):
             }
         """)
         add_button.clicked.connect(self.add_prescription)
+        edit_button.clicked.connect(self.update_prescription)
+        delete_button.clicked.connect(self.delete_prescription)
         clear_button.clicked.connect(self.clear_form)
         back_button.clicked.connect(self.main_window.show_menu)
         button_layout.addWidget(add_button)
+        button_layout.addWidget(edit_button)
+        button_layout.addWidget(delete_button)
         button_layout.addWidget(clear_button)
         button_layout.addWidget(back_button)
         main_layout.addLayout(button_layout)
@@ -231,6 +271,7 @@ class PrescriptionLoggingWidget(QWidget):
                 padding: 8px;
             }
         """)
+        self.prescription_table.clicked.connect(self.load_prescription_to_form)
         main_layout.addWidget(self.prescription_table)
 
         main_layout.addStretch()
@@ -264,6 +305,22 @@ class PrescriptionLoggingWidget(QWidget):
             self.prescription_table.setItem(row, 3, QTableWidgetItem(prescription['dosage']))
             self.prescription_table.setItem(row, 4, QTableWidgetItem(prescription['prescription_date']))
             self.prescription_table.setItem(row, 5, QTableWidgetItem(str(prescription['quantity_prescribed'])))
+
+    def load_prescription_to_form(self):
+        row = self.prescription_table.currentRow()
+        if row >= 0:
+            prescription_id = int(self.prescription_table.item(row, 0).text())
+            prescription = self.db.get_prescription(prescription_id)  # Assuming this method exists
+            patient = self.db.get_patient(prescription['patient_id'])
+            drug = self.db.get_drug(prescription['drug_id'])
+            self.patient_search_combo.setCurrentText(f"{patient['first_name']} {patient['last_name']}")
+            self.drug_search_combo.setCurrentText(drug['name'])
+            self.diagnosis_input.setText(prescription['diagnosis'])
+            self.notes_input.setText(prescription['notes'] or "")
+            self.dosage_input.setText(prescription['dosage'])
+            self.frequency_input.setText(prescription['frequency'])
+            self.duration_input.setText(prescription['duration'])
+            self.quantity_input.setText(str(prescription['quantity_prescribed']))
 
     def add_prescription(self):
         patient_id = self.patient_search_combo.currentData()
@@ -322,6 +379,86 @@ class PrescriptionLoggingWidget(QWidget):
             self.clear_form()
         except ValueError as e:
             QMessageBox.warning(self, "Error", str(e))
+
+    def update_prescription(self):
+        row = self.prescription_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Error", "Please select a prescription to edit.")
+            return
+
+        prescription_id = int(self.prescription_table.item(row, 0).text())
+        patient_id = self.patient_search_combo.currentData()
+        drug_id = self.drug_search_combo.currentData()
+        diagnosis = self.diagnosis_input.toPlainText().strip()
+        notes = self.notes_input.toPlainText().strip()
+        dosage = self.dosage_input.text().strip()
+        frequency = self.frequency_input.text().strip()
+        duration = self.duration_input.text().strip()
+        quantity = self.quantity_input.text().strip()
+
+        if not patient_id or self.patient_search_combo.currentText() == "Select Patient":
+            QMessageBox.warning(self, "Error", "Please select a patient.")
+            return
+        if not drug_id or self.drug_search_combo.currentText() == "Select Drug":
+            QMessageBox.warning(self, "Error", "Please select a drug.")
+            return
+        if not diagnosis:
+            QMessageBox.warning(self, "Error", "Diagnosis is required.")
+            return
+        if not dosage:
+            QMessageBox.warning(self, "Error", "Dosage is required.")
+            return
+        if not frequency:
+            QMessageBox.warning(self, "Error", "Frequency is required.")
+            return
+        if not duration:
+            QMessageBox.warning(self, "Error", "Duration is required.")
+            return
+        if not quantity:
+            QMessageBox.warning(self, "Error", "Quantity is required.")
+            return
+        try:
+            quantity_val = int(quantity)
+            if quantity_val <= 0:
+                QMessageBox.warning(self, "Error", "Quantity must be greater than 0.")
+                return
+        except ValueError:
+            QMessageBox.warning(self, "Error", "Quantity must be a number.")
+            return
+
+        try:
+            self.db.update_prescription(
+                prescription_id=prescription_id,
+                patient_id=patient_id,
+                user_id=self.main_window.current_user['user_id'],
+                diagnosis=diagnosis,
+                notes=notes,
+                drug_id=drug_id,
+                dosage=dosage,
+                frequency=frequency,
+                duration=duration,
+                quantity_prescribed=quantity_val
+            )
+            QMessageBox.information(self, "Success", "Prescription updated successfully.")
+            self.load_data()
+            self.clear_form()
+        except ValueError as e:
+            QMessageBox.warning(self, "Error", str(e))
+
+    def delete_prescription(self):
+        row = self.prescription_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Error", "Please select a prescription to delete.")
+            return
+
+        prescription_id = int(self.prescription_table.item(row, 0).text())
+        reply = QMessageBox.question(self, "Confirm Delete", "Are you sure you want to delete this prescription?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.db.delete_prescription(prescription_id)
+            QMessageBox.information(self, "Success", "Prescription deleted successfully.")
+            self.load_data()
+            self.clear_form()
 
     def clear_form(self):
         self.patient_search_combo.setCurrentIndex(0)

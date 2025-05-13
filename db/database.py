@@ -316,6 +316,29 @@ class Database:
         patient = cursor.fetchone()
         conn.close()
         return dict(patient) if patient else None
+        
+    def update_patient(self, patient_id, first_name, last_name, age, gender, contact, medical_history):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE patients SET first_name = ?, last_name = ?, age = ?, gender = ?, contact = ?, medical_history = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
+            WHERE patient_id = ?
+        """, (first_name, last_name, age, gender, contact, medical_history, datetime.now().isoformat(), patient_id))
+        conn.commit()
+        conn.close()
+        self.queue_sync_operation('patients', 'UPDATE', patient_id, {
+            'patient_id': patient_id, 'first_name': first_name, 'last_name': last_name, 'age': age,
+            'gender': gender, 'contact': contact, 'medical_history': medical_history,
+            'updated_at': datetime.now().isoformat(), 'is_synced': False, 'sync_status': 'pending'
+        })
+        
+    def delete_patient(self, patient_id):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM patients WHERE patient_id = ?", (patient_id,))
+        conn.commit()
+        conn.close()
+        self.queue_sync_operation('patients', 'DELETE', patient_id, {})
 
     def get_all_drugs(self):
         """Retrieve all drugs."""
@@ -431,6 +454,38 @@ class Database:
         prescriptions = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return prescriptions
+        
+    def get_prescription(self, prescription_id):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM prescriptions WHERE prescription_id = ?", (prescription_id,))
+        prescription = cursor.fetchone()
+        conn.close()
+        return dict(prescription) if prescription else None
+    
+    def update_prescription(self, prescription_id, patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE prescriptions SET patient_id = ?, user_id = ?, diagnosis = ?, notes = ?, drug_id = ?, dosage = ?, frequency = ?, duration = ?, quantity_prescribed = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
+            WHERE prescription_id = ?
+        """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, datetime.now().isoformat(), prescription_id))
+        conn.commit()
+        conn.close()
+        self.queue_sync_operation('prescriptions', 'UPDATE', prescription_id, {
+            'prescription_id': prescription_id, 'patient_id': patient_id, 'user_id': user_id, 'diagnosis': diagnosis,
+            'notes': notes, 'drug_id': drug_id, 'dosage': dosage, 'frequency': frequency, 'duration': duration,
+            'quantity_prescribed': quantity_prescribed, 'updated_at': datetime.now().isoformat(),
+            'is_synced': False, 'sync_status': 'pending'
+        })
+        
+    def delete_prescription(self, prescription_id):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM prescriptions WHERE prescription_id = ?", (prescription_id,))
+        conn.commit()
+        conn.close()
+        self.queue_sync_operation('prescriptions', 'DELETE', prescription_id, {})
 
     def add_prescription(self, patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed):
         """Add a new prescription and reduce drug stock."""
