@@ -123,6 +123,23 @@ class SalesManagementWidget(QWidget):
         self.currency_combo.setCurrentText(saved_currency)
         self.currency_combo.currentTextChanged.connect(self.save_currency)
 
+        # Payment mode selection
+        self.payment_mode_combo = QComboBox()
+        self.payment_mode_combo.addItems(["cash", "card", "mobile"])
+        self.payment_mode_combo.setToolTip("Select mode of payment")
+        self.payment_mode_combo.setStyleSheet("""
+            QComboBox {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QComboBox:focus {
+                border: 1px solid #4CAF50;
+            }
+        """)
+        self.payment_mode_combo.setCurrentText("cash")  # Default to cash
+
         left_form.addWidget(QLabel("Patient (Search):"))
         left_form.addWidget(self.patient_search_combo)
         left_form.addWidget(QLabel("Patient (Shortlist):"))
@@ -135,6 +152,8 @@ class SalesManagementWidget(QWidget):
         right_form.addWidget(self.quantity_input)
         right_form.addWidget(QLabel("Currency:"))
         right_form.addWidget(self.currency_combo)
+        right_form.addWidget(QLabel("Payment Mode:"))
+        right_form.addWidget(self.payment_mode_combo)
 
         form_layout.addLayout(left_form)
         form_layout.addLayout(right_form)
@@ -389,6 +408,7 @@ class SalesManagementWidget(QWidget):
             return
 
         total_price = sum(item['price'] for item in self.sale_items)  # Total in KSh
+        mode_of_payment = self.payment_mode_combo.currentText()  # Get selected payment mode
         try:
             # Check stock before proceeding
             for item in self.sale_items:
@@ -401,7 +421,8 @@ class SalesManagementWidget(QWidget):
             sale_id = self.db.add_sale(
                 patient_id=patient_id,
                 user_id=self.main_window.current_user['user_id'],
-                total_price=total_price
+                total_price=total_price,
+                mode_of_payment=mode_of_payment
             )
             for item in self.sale_items:
                 self.db.add_sale_item(
@@ -486,7 +507,8 @@ class SalesManagementWidget(QWidget):
             ["Date:", sale['sale_date'][:10]],
             ["Time:", sale['sale_date'][11:16]],
             ["Issued By:", self.main_window.current_user['username']],
-            ["Currency:", selected_currency]
+            ["Currency:", selected_currency],
+            ["Payment Mode:", sale['mode_of_payment']]  # Add payment mode to receipt
         ]
         meta_table = Table(meta_data, colWidths=[40*mm, doc.width-40*mm])
         meta_table.setStyle(TableStyle([
