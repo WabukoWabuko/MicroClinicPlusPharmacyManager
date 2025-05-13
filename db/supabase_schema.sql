@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS prescriptions;
 DROP TABLE IF EXISTS drugs;
 DROP TABLE IF EXISTS patients;
 DROP TABLE IF EXISTS suppliers;
+DROP TABLE IF EXISTS users;
 
 -- Users table: Stores admin and staff accounts
 CREATE TABLE users (
