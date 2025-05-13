@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QGridLayout
 from PyQt6.QtCore import Qt
 from ui.login import LoginWidget
 from ui.patient_management import PatientManagementWidget
@@ -79,8 +79,8 @@ class MainWindow(QMainWindow):
             }
         """)
 
-        # Grid layout for square buttons
-        button_grid = QHBoxLayout()
+        # Grid layout for buttons (4 on top, 4 below)
+        button_grid = QGridLayout()
         button_grid.setSpacing(10)  # Space between buttons
 
         button_style = """
@@ -120,13 +120,19 @@ class MainWindow(QMainWindow):
         # Define newline character outside f-string
         newline = '\n'
 
-        # Add buttons to the grid (side by side)
+        # Add buttons to the grid (2 rows, 4 columns)
+        row = 0
+        col = 0
         for text, action in buttons:
             button = QPushButton(text)
             button.setStyleSheet(button_style)
             button.setToolTip(f"Navigate to {text.lower().replace(newline, ' ')}")
             button.clicked.connect(action)
-            button_grid.addWidget(button)
+            button_grid.addWidget(button, row, col)
+            col += 1
+            if col > 3:  # Move to next row after 4 columns
+                col = 0
+                row += 1
 
         card_layout.addLayout(button_grid)
 
