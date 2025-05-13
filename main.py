@@ -27,21 +27,19 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
 
-        # Add a top bar for the heading and status dot
+        # Add a top bar for the title and status dot
         self.top_bar = QHBoxLayout()
         self.layout.addLayout(self.top_bar)
 
-        # Title at the topmost position
+        # Title at top-center
         title = QLabel("MicroClinic Plus Pharmacy Manager")
-        title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF; margin: 10px;")
         self.top_bar.addWidget(title)
 
-        # Status dot with dynamic text
-        self.status_label = QLabel()
-        self.status_label.setStyleSheet("font-size: 14px; margin: 5px 10px;")
-        self.update_status_dot()
-        self.top_bar.addStretch()  # Push status to the right
+        # Status dot with dynamic text on top-left
+        self.status_label = QLabel("● Online")
+        self.status_label.setStyleSheet("font-size: 20px; color: #00FF00; margin: 10px;")
         self.top_bar.addWidget(self.status_label)
 
         self.content_widget = QWidget()
@@ -51,12 +49,12 @@ class MainWindow(QMainWindow):
         self.show_login()
 
     def update_status_dot(self):
-        """Update the status dot and text based on online/offline status."""
+        """Update the status dot color and text based on online/offline status."""
         is_online = self.db.is_online()
         color = "#00FF00" if is_online else "#FF0000"  # Green for online, red for offline
         status_text = "Online" if is_online else "Offline"
         self.status_label.setText(f"● {status_text}")
-        self.status_label.setStyleSheet(f"color: {color}; font-size: 14px; margin: 5px 10px;")
+        self.status_label.setStyleSheet(f"font-size: 20px; color: {color}; margin: 10px;")
 
     def show_login(self):
         self.clear_content()
@@ -72,18 +70,7 @@ class MainWindow(QMainWindow):
 
         self.set_title("Menu")
 
-        card = QWidget()
-        card_layout = QVBoxLayout(card)
-        card.setStyleSheet("""
-            QWidget {
-                background-color: #1E1E1E;
-                border: 1px solid #333333;
-                border-radius: 10px;
-                padding: 20px;
-            }
-        """)
-
-        # Grid layout for buttons (4 on top, 4 below)
+        # Grid layout for buttons (4 on top, 4 below) without card
         button_grid = QGridLayout()
         button_grid.setSpacing(10)  # Space between buttons
 
@@ -138,7 +125,7 @@ class MainWindow(QMainWindow):
                 col = 0
                 row += 1
 
-        card_layout.addLayout(button_grid)
+        menu_layout.addLayout(button_grid)
 
         # Layout for toggle and logout buttons (side by side)
         bottom_buttons_layout = QHBoxLayout()
@@ -189,9 +176,8 @@ class MainWindow(QMainWindow):
         logout_button.clicked.connect(self.show_login)
         bottom_buttons_layout.addWidget(logout_button)
 
-        card_layout.addLayout(bottom_buttons_layout)
-        card_layout.addStretch()
-        menu_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
+        menu_layout.addLayout(bottom_buttons_layout)
+        menu_layout.addStretch()
         self.content_layout.addWidget(menu_widget)
         self.update_status_dot()
 
