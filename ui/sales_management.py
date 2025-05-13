@@ -327,24 +327,24 @@ class SalesManagementWidget(QWidget):
             return
 
         drug = self.db.get_drug(drug_id)
+        # Allow sale even if stock reaches zero, but show warning
         if drug['quantity'] < quantity_val:
-            QMessageBox.warning(self, "Error", f"Available quantity for {drug['name']} is: {drug['quantity']}")
+            QMessageBox.warning(self, "Error", f"Insufficient stock for {drug['name']}. Available: {drug['quantity']}")
             return
 
         # Reduce stock immediately when adding the item
         try:
             warning = self.db.reduce_drug_stock(drug_id, quantity_val)
-            if warning:
-                remaining = drug['quantity'] - quantity_val
+            if warning or drug['quantity'] - quantity_val <= 0:
+                remaining = max(0, drug['quantity'] - quantity_val)  # Ensure remaining is not negative
                 message = f"Stock for {drug['name']} is low. Remaining: {remaining} units."
                 # Use a non-blocking QMessageBox with a timer
                 msg_box = QMessageBox(self)
                 msg_box.setWindowTitle("Low Stock Warning")
                 msg_box.setText(message)
                 msg_box.setStandardButtons(QMessageBox.StandardButton.NoButton)
-                # Ensure the message box is shown and the timer starts
                 msg_box.show()
-                QTimer.singleShot(2000, lambda: msg_box.done(0))  # Use done(0) to properly close the dialog
+                QTimer.singleShot(2000, lambda: msg_box.done(0))  # Auto-close after 2 seconds
         except ValueError as e:
             QMessageBox.warning(self, "Error", str(e))
             return
@@ -394,7 +394,6 @@ class SalesManagementWidget(QWidget):
 
         total_price = sum(item['price'] for item in self.sale_items)  # Total in KSh
         mode_of_payment = self.payment_mode_combo.currentText()  # Get selected payment mode
-        sale_successful = False
 
         try:
             # Record the sale
@@ -411,22 +410,13 @@ class SalesManagementWidget(QWidget):
                     quantity=item['quantity'],
                     price=item['price']  # Store in KSh
                 )
-            sale_successful = True
             QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
-
+            self.load_data()  # Update the sales table
+            self.sale_items = []  # Clear sale_items without restoring stock
+            self.sale_items_table.setRowCount(0)
         except Exception as e:
-            # Catch all exceptions to provide detailed error information
             QMessageBox.critical(self, "Error", f"Failed to complete sale: {str(e)}")
-            # Optionally, you can log the error for debugging
             print(f"Error in complete_sale: {str(e)}")
-
-        finally:
-            # Always update the sales table, even if an error occurs
-            self.load_data()
-            # Only clear the sale items if the sale was successful
-            if sale_successful:
-                self.sale_items = []  # Clear sale_items without restoring stock
-                self.sale_items_table.setRowCount(0)
 
     def generate_receipt(self):
         """Generate a slick PDF receipt with clean styling and selected currency."""
@@ -562,7 +552,7 @@ class SalesManagementWidget(QWidget):
             ('FONTSIZE', (0,1), (-1,-1), 9),
             ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
             ('BOTTOMPADDING', (0,0), (-1,0), 6),
-            ('TOPPADDING', (0,0), (-1,0), 6),
+            ('TOPPADING', (0,0), (-1,0), 6),
         ]))
         elements.append(items_table)
         elements.append(Spacer(1, 12))
