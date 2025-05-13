@@ -6,6 +6,7 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 import requests
 import json
+import pytz
 
 class Database:
     def __init__(self):
@@ -161,36 +162,72 @@ class Database:
             return
         conn = self.connect()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM sync_queue WHERE status = 'pending'")
-        queue_items = [dict(row) for row in cursor.fetchall()]
         
-        for item in queue_items:
-            table_name = item['table_name']
-            operation = item['operation']
-            record_id = item['record_id']
-            data = json.loads(item['data']) if item['data'] else {}
-            if not self.supabase_table_exists(table_name):
-                print(f"Error: Supabase table '{table_name}' does not exist. Skipping sync for queue_id {item['queue_id']}.")
-                continue
-            try:
-                if operation == 'INSERT':
-                    response = self.supabase.table(table_name).insert(data).execute()
-                    if response.data:
-                        conn.execute(f"UPDATE {table_name} SET is_synced = 1, sync_status = 'synced' WHERE {table_name}_id = ?", (record_id,))
-                elif operation == 'UPDATE':
-                    response = self.supabase.table(table_name).update(data).eq(f"{table_name}_id", record_id).execute()
-                    if response.data:
-                        conn.execute(f"UPDATE {table_name} SET is_synced = 1, sync_status = 'synced' WHERE {table_name}_id = ?", (record_id,))
-                elif operation == 'DELETE':
-                    response = self.supabase.table(table_name).delete().eq(f"{table_name}_id", record_id).execute()
-                    if response.data:
-                        conn.execute(f"UPDATE sync_queue SET status = 'synced' WHERE queue_id = ?", (item['queue_id'],))
-                conn.execute("UPDATE sync_queue SET status = 'synced' WHERE queue_id = ?", (item['queue_id'],))
-            except Exception as e:
-                conn.execute("UPDATE sync_queue SET status = 'failed' WHERE queue_id = ?", (item['queue_id'],))
-                print(f"Sync error for {table_name} {operation}: {e}")
-        
-        for table in ['patients', 'drugs', 'prescriptions', 'sales', 'sale_items', 'suppliers']:
+        # Define table sync order to satisfy foreign key constraints
+        table_order = [
+            'users',
+            'patients',
+            'drugs',
+            'suppliers',
+            'prescriptions',
+            'sales',
+            'sale_items'
+        ]
+
+        # Push local changes to Supabase
+        for table in table_order:
+            cursor.execute("SELECT * FROM sync_queue WHERE table_name = ? AND status = 'pending'", (table,))
+            queue_items = [dict(row) for row in cursor.fetchall()]
+            
+            for item in queue_items:
+                table_name = item['table_name']
+                operation = item['operation']
+                record_id = item['record_id']
+                data = json.loads(item['data']) if item['data'] else {}
+                if not self.supabase_table_exists(table_name):
+                    print(f"Error: Supabase table '{table_name}' does not exist. Skipping sync for queue_id {item['queue_id']}.")
+                    continue
+                try:
+                    # Fetch local record's updated_at for comparison
+                    cursor.execute(f"SELECT updated_at FROM {table_name} WHERE {table_name[:-1]}_id = ?", (record_id,))
+                    local_row = cursor.fetchone()
+                    local_updated_at = datetime.fromisoformat(local_row['updated_at']) if local_row and local_row['updated_at'] else None
+
+                    # Fetch remote record's updated_at
+                    remote_response = self.supabase.table(table_name).select('updated_at').eq(f'{table_name[:-1]}_id', record_id).execute()
+                    remote_updated_at = None
+                    if remote_response.data:
+                        remote_updated_at = datetime.fromisoformat(remote_response.data[0]['updated_at'].replace('Z', '+00:00'))
+
+                    # Normalize timestamps for comparison
+                    if local_updated_at and remote_updated_at:
+                        local_updated_at = local_updated_at.replace(tzinfo=pytz.UTC)
+                        if local_updated_at < remote_updated_at:
+                            print(f"Skipping sync for {table_name} record {record_id}: Remote is newer")
+                            cursor.execute("UPDATE sync_queue SET status = 'skipped' WHERE queue_id = ?", (item['queue_id'],))
+                            conn.commit()
+                            continue
+
+                    # Perform the sync operation
+                    if operation == 'INSERT':
+                        response = self.supabase.table(table_name).insert(data).execute()
+                        if response.data:
+                            conn.execute(f"UPDATE {table_name} SET is_synced = 1, sync_status = 'synced' WHERE {table_name[:-1]}_id = ?", (record_id,))
+                    elif operation == 'UPDATE':
+                        response = self.supabase.table(table_name).update(data).eq(f"{table_name[:-1]}_id", record_id).execute()
+                        if response.data:
+                            conn.execute(f"UPDATE {table_name} SET is_synced = 1, sync_status = 'synced' WHERE {table_name[:-1]}_id = ?", (record_id,))
+                    elif operation == 'DELETE':
+                        response = self.supabase.table(table_name).delete().eq(f"{table_name[:-1]}_id", record_id).execute()
+                        if response.data:
+                            conn.execute(f"UPDATE sync_queue SET status = 'synced' WHERE queue_id = ?", (item['queue_id'],))
+                    conn.execute("UPDATE sync_queue SET status = 'synced' WHERE queue_id = ?", (item['queue_id'],))
+                except Exception as e:
+                    conn.execute("UPDATE sync_queue SET status = 'failed' WHERE queue_id = ?", (item['queue_id'],))
+                    print(f"Sync error for {table_name} {operation}: {e}")
+
+        # Pull updates from Supabase
+        for table in table_order:
             if not self.supabase_table_exists(table):
                 print(f"Error: Supabase table '{table}' does not exist. Skipping pull.")
                 continue
@@ -204,15 +241,35 @@ class Database:
                 remote_id = remote_row[f"{table[:-1]}_id"]
                 remote_updated_at = datetime.fromisoformat(remote_row['updated_at'].replace('Z', '+00:00'))
                 local_row = local_data.get(remote_id)
+                
+                # Validate and sanitize data for the 'patients' table
+                if table == 'patients':
+                    # Ensure 'age' is within the valid range (1 to 150)
+                    if 'age' in remote_row:
+                        try:
+                            age = int(remote_row['age'])
+                            if age <= 0:
+                                print(f"Warning: Invalid age ({age}) for patient_id {remote_id}. Clamping to 1.")
+                                remote_row['age'] = 1
+                            elif age > 150:
+                                print(f"Warning: Invalid age ({age}) for patient_id {remote_id}. Clamping to 150.")
+                                remote_row['age'] = 150
+                        except (ValueError, TypeError):
+                            print(f"Warning: Invalid age value ({remote_row['age']}) for patient_id {remote_id}. Skipping record.")
+                            continue
+                
+                # Convert is_synced from boolean to integer for SQLite
+                remote_row['is_synced'] = 1 if remote_row['is_synced'] else 0
+                
                 if not local_row:
                     cols = ', '.join(remote_row.keys())
                     placeholders = ', '.join('?' for _ in remote_row)
                     conn.execute(f"INSERT INTO {table} ({cols}) VALUES ({placeholders})", list(remote_row.values()))
-                elif datetime.fromisoformat(local_row['updated_at'].replace('Z', '+00:00')) < remote_updated_at:
+                elif datetime.fromisoformat(local_row['updated_at']).replace(tzinfo=pytz.UTC) < remote_updated_at:
                     updates = ', '.join(f"{k} = ?" for k in remote_row.keys() if k != f"{table[:-1]}_id")
                     conn.execute(f"UPDATE {table} SET {updates} WHERE {table[:-1]}_id = ?", 
                                  list(remote_row.values())[:-1] + [remote_id])
-        
+
         conn.commit()
         conn.close()
         self.last_sync_time = datetime.now()
