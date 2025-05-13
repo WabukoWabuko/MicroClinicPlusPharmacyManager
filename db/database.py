@@ -488,27 +488,20 @@ class Database:
         self.queue_sync_operation('prescriptions', 'DELETE', prescription_id, {})
 
     def add_prescription(self, patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed):
-        """Add a new prescription and reduce drug stock."""
-        # Reduce stock before adding the prescription
-        stock_warning = self.reduce_drug_stock(drug_id, quantity_prescribed)
-
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, is_synced, sync_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')
+            INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, prescription_date, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 0, 'pending')
         """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed))
-        prescription_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        self.queue_sync_operation('prescriptions', 'INSERT', prescription_id, {
-            'prescription_id': prescription_id, 'patient_id': patient_id, 'user_id': user_id,
-            'diagnosis': diagnosis, 'notes': notes, 'drug_id': drug_id, 'dosage': dosage,
-            'frequency': frequency, 'duration': duration, 'quantity_prescribed': quantity_prescribed,
-            'prescription_date': datetime.now().isoformat(), 'updated_at': datetime.now().isoformat(),
+        self.queue_sync_operation('prescriptions', 'INSERT', cursor.lastrowid, {
+            'patient_id': patient_id, 'user_id': user_id, 'diagnosis': diagnosis, 'notes': notes,
+            'drug_id': drug_id, 'dosage': dosage, 'frequency': frequency, 'duration': duration,
+            'quantity_prescribed': quantity_prescribed, 'prescription_date': datetime.now().isoformat(),
             'is_synced': False, 'sync_status': 'pending'
         })
-        return prescription_id, stock_warning
 
     def get_all_sales(self):
         """Retrieve all sales."""

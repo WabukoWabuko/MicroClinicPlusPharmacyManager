@@ -171,9 +171,9 @@ class PrescriptionLoggingWidget(QWidget):
                 background-color: #3d8b40;
             }
         """)
-        edit_button = QPushButton("Edit Prescription")
-        edit_button.setToolTip("Edit selected prescription")
-        edit_button.setStyleSheet("""
+        update_button = QPushButton("Update Prescription")
+        update_button.setToolTip("Update selected prescription")
+        update_button.setStyleSheet("""
             QPushButton {
                 background-color: #2196F3;
                 color: white;
@@ -244,12 +244,12 @@ class PrescriptionLoggingWidget(QWidget):
             }
         """)
         add_button.clicked.connect(self.add_prescription)
-        edit_button.clicked.connect(self.update_prescription)
+        update_button.clicked.connect(self.update_prescription)
         delete_button.clicked.connect(self.delete_prescription)
         clear_button.clicked.connect(self.clear_form)
         back_button.clicked.connect(self.main_window.show_menu)
         button_layout.addWidget(add_button)
-        button_layout.addWidget(edit_button)
+        button_layout.addWidget(update_button)
         button_layout.addWidget(delete_button)
         button_layout.addWidget(clear_button)
         button_layout.addWidget(back_button)
@@ -383,7 +383,7 @@ class PrescriptionLoggingWidget(QWidget):
     def update_prescription(self):
         row = self.prescription_table.currentRow()
         if row < 0:
-            QMessageBox.warning(self, "Error", "Please select a prescription to edit.")
+            QMessageBox.warning(self, "Error", "Please select a prescription to update.")
             return
 
         prescription_id = int(self.prescription_table.item(row, 0).text())
