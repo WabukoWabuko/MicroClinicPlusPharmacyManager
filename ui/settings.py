@@ -1,3 +1,4 @@
+import sqlite3  # Added import for sqlite3
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox, QPushButton, QMessageBox, QTableWidget, QTableWidgetItem, QLineEdit, QComboBox, QFileDialog, QScrollArea
 from PyQt6.QtCore import Qt
 import os
@@ -417,7 +418,7 @@ class SettingsWidget(QWidget):
             self.db.sync_data()
             self.status_label.setText(self.get_sync_status())
             self.update_sync_table()
-            QMessageBox.information(self, "Sync", "Manual sync completed successfully at 02:36 PM EAT on Tuesday, May 13, 2025.")
+            QMessageBox.information(self, "Sync", "Manual sync completed successfully at 02:54 PM EAT on Tuesday, May 13, 2025.")
         except sqlite3.IntegrityError as e:
             self.status_label.setText(f"Sync failed: {str(e)}")
             self.update_sync_table()
@@ -495,7 +496,7 @@ class SettingsWidget(QWidget):
         
         self.status_label.setText(self.get_sync_status())
         self.update_sync_table()
-        QMessageBox.information(self, "Settings", "Settings saved successfully at 02:36 PM EAT on Tuesday, May 13, 2025.")
+        QMessageBox.information(self, "Settings", "Settings saved successfully at 02:54 PM EAT on Tuesday, May 13, 2025.")
 
     def update_sync_table(self):
         """Update the sync history table."""
