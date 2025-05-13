@@ -35,7 +35,7 @@ class Database:
             conn.commit()
             conn.close()
 
-        # Create sync_queue table in SQLite if not exists
+        # Create sync_queue table in SQLite if not exists (redundant but kept for compatibility)
         conn = self.connect()
         conn.execute("""
             CREATE TABLE IF NOT EXISTS sync_queue (
@@ -48,7 +48,7 @@ class Database:
                 status TEXT DEFAULT 'pending'
             )
         """)
-        # Create suppliers table in SQLite if not exists
+        # Create suppliers table in SQLite if not exists (redundant but kept for compatibility)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS suppliers (
                 supplier_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +91,6 @@ class Database:
                     last_sync_str = f.read().strip()
                     if last_sync_str:
                         self.last_sync_time = datetime.fromisoformat(last_sync_str)
-                        # Ensure last_sync_time is offset-aware
                         if self.last_sync_time.tzinfo is None:
                             self.last_sync_time = pytz.UTC.localize(self.last_sync_time)
             return default_config
@@ -178,11 +177,9 @@ class Database:
         conn = self.connect()
         cursor = conn.cursor()
 
-        # Process pending operations in the sync queue
         cursor.execute("SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY created_at")
         pending_operations = cursor.fetchall()
 
-        # Dependency order: users first, then patients, drugs, suppliers, prescriptions, sales, sale_items
         table_priority = {
             "users": 1,
             "patients": 2,
@@ -224,6 +221,10 @@ class Database:
                             print(f"Invalid contact ({contact}) for patient_id {record_id}. Setting to default for sync.")
                             data['contact'] = '+254000000000'
 
+                # Convert SQLite INTEGER (0/1) to BOOLEAN for Supabase
+                if 'is_synced' in data:
+                    data['is_synced'] = bool(data['is_synced'])
+
                 # Push to Supabase based on operation
                 if operation == 'INSERT':
                     response = self.supabase.table(table_name).insert(data).execute()
@@ -235,7 +236,6 @@ class Database:
                     response = self.supabase.table(table_name).delete().eq(f"{table_name[:-1]}_id", record_id).execute()
                     print(f"Pushed DELETE for {table_name} record ID {record_id} to Supabase")
 
-                # Update sync status in local database
                 cursor.execute(f"UPDATE {table_name} SET is_synced = 1, sync_status = 'synced' WHERE {table_name[:-1]}_id = ?", (record_id,))
                 cursor.execute("UPDATE sync_queue SET status = 'synced' WHERE queue_id = ?", (queue_id,))
 
@@ -251,30 +251,24 @@ class Database:
         if not self.supabase or not self.sync_enabled:
             return
 
-        # Ensure online
         if not self.is_online():
             print("Offline: Changes will sync when online.")
             return
 
         print("Starting sync...")
 
-        # Tables to sync
         tables = ["users", "patients", "drugs", "suppliers", "prescriptions", "sales", "sale_items"]
 
-        # Push local changes to Supabase
         self.push_changes(tables)
 
-        # Pull changes from Supabase
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
         for table in tables:
             print(f"Pulling changes for {table}...")
 
-            # Get the last sync time for comparison
             last_sync = self.last_sync_time or datetime(1970, 1, 1, tzinfo=pytz.UTC)
 
-            # Fetch remote data modified since last sync
             try:
                 response = self.supabase.table(table).select("*").gt("updated_at", last_sync.isoformat()).execute()
                 remote_data = response.data
@@ -282,14 +276,11 @@ class Database:
                 print(f"Error fetching {table} from Supabase: {e}")
                 continue
 
-            # Process each remote record
             for remote_row in remote_data:
                 remote_id = remote_row[f"{table[:-1]}_id"]
                 remote_updated_at = datetime.fromisoformat(remote_row["updated_at"].replace("Z", "+00:00"))
 
-                # Validate and sanitize data for the 'patients' table
                 if table == 'patients':
-                    # Ensure 'age' is within the valid range (1 to 150)
                     if 'age' in remote_row:
                         try:
                             age = int(remote_row['age'])
@@ -303,43 +294,40 @@ class Database:
                             print(f"Warning: Invalid age value ({remote_row['age']}) for patient_id {remote_id}. Skipping record.")
                             continue
 
-                    # Validate and sanitize 'contact' field
                     if 'contact' in remote_row:
                         contact = str(remote_row['contact']).strip()
                         if not re.match(r'^\+[0-9]{3}[0-9]{9}$', contact):
                             print(f"Warning: Invalid contact ({contact}) for patient_id {remote_id}. Setting to default.")
                             remote_row['contact'] = '+254000000000'
 
-                # Check if the record exists locally
+                # Convert Supabase BOOLEAN to SQLite INTEGER
+                if 'is_synced' in remote_row:
+                    remote_row['is_synced'] = 1 if remote_row['is_synced'] else 0
+
                 cursor.execute(f"SELECT updated_at, is_synced FROM {table} WHERE {table[:-1]}_id = ?", (remote_id,))
                 local_row = cursor.fetchone()
 
                 if local_row:
-                    # Record exists, compare timestamps
                     local_updated_at_str = local_row[0] if local_row[0] else "1970-01-01 00:00:00"
                     local_updated_at = datetime.strptime(local_updated_at_str, "%Y-%m-%d %H:%M:%S")
                     local_updated_at = pytz.UTC.localize(local_updated_at)
                     is_synced = bool(local_row[1])
 
                     if remote_updated_at > local_updated_at:
-                        # Update local record
                         updates = ", ".join([f"{key} = ?" for key in remote_row.keys() if key != f"{table[:-1]}_id"])
                         values = [remote_row[key] for key in remote_row.keys() if key != f"{table[:-1]}_id"] + [remote_id]
                         cursor.execute(f"UPDATE {table} SET {updates} WHERE {table[:-1]}_id = ?", values)
                         print(f"Updated {table[:-1]} with ID {remote_id}")
                 else:
-                    # Insert new record
                     columns = ", ".join(remote_row.keys())
                     placeholders = ", ".join(["?" for _ in remote_row])
                     values = [remote_row[key] for key in remote_row.keys()]
                     cursor.execute(f"INSERT INTO {table} ({columns}) VALUES ({placeholders})", values)
                     print(f"Inserted new {table[:-1]} with ID {remote_id}")
 
-        # Commit changes
         conn.commit()
         conn.close()
 
-        # Update last sync time
         self.last_sync_time = datetime.now(pytz.UTC)
         self.save_last_sync_time()
         print(f"Sync completed at {self.last_sync_time}")
@@ -420,17 +408,18 @@ class Database:
         """Add a new patient."""
         conn = self.connect()
         cursor = conn.cursor()
+        current_time = datetime.now(pytz.UTC)
         cursor.execute("""
-            INSERT INTO patients (first_name, last_name, age, gender, contact, medical_history, is_synced, sync_status)
-            VALUES (?, ?, ?, ?, ?, ?, 0, 'pending')
-        """, (first_name, last_name, age, gender, contact, medical_history))
+            INSERT INTO patients (first_name, last_name, age, gender, contact, medical_history, registration_date, updated_at, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')
+        """, (first_name, last_name, age, gender, contact, medical_history, current_time.isoformat(), current_time.isoformat()))
         patient_id = cursor.lastrowid
         conn.commit()
         conn.close()
         self.queue_sync_operation('patients', 'INSERT', patient_id, {
             'patient_id': patient_id, 'first_name': first_name, 'last_name': last_name, 'age': age,
             'gender': gender, 'contact': contact, 'medical_history': medical_history,
-            'registration_date': datetime.now(pytz.UTC).isoformat(), 'updated_at': datetime.now(pytz.UTC).isoformat(),
+            'registration_date': current_time.isoformat(), 'updated_at': current_time.isoformat(),
             'is_synced': False, 'sync_status': 'pending'
         })
         return patient_id
@@ -498,17 +487,18 @@ class Database:
         """Add a new drug."""
         conn = self.connect()
         cursor = conn.cursor()
+        current_time = datetime.now(pytz.UTC)
         cursor.execute("""
-            INSERT INTO drugs (name, quantity, batch_number, expiry_date, price, is_synced, sync_status)
-            VALUES (?, ?, ?, ?, ?, 0, 'pending')
-        """, (name, quantity, batch_number, expiry_date, price))
+            INSERT INTO drugs (name, quantity, batch_number, expiry_date, price, created_at, updated_at, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'pending')
+        """, (name, quantity, batch_number, expiry_date, price, current_time.isoformat(), current_time.isoformat()))
         drug_id = cursor.lastrowid
         conn.commit()
         conn.close()
         self.queue_sync_operation('drugs', 'INSERT', drug_id, {
             'drug_id': drug_id, 'name': name, 'quantity': quantity, 'batch_number': batch_number,
-            'expiry_date': expiry_date, 'price': price, 'created_at': datetime.now(pytz.UTC).isoformat(),
-            'updated_at': datetime.now(pytz.UTC).isoformat(), 'is_synced': False, 'sync_status': 'pending'
+            'expiry_date': expiry_date, 'price': price, 'created_at': current_time.isoformat(),
+            'updated_at': current_time.isoformat(), 'is_synced': False, 'sync_status': 'pending'
         })
         return drug_id
 
@@ -653,9 +643,9 @@ class Database:
         cursor = conn.cursor()
         current_time = datetime.now(pytz.UTC)
         cursor.execute("""
-            INSERT INTO sales (patient_id, user_id, total_price, mode_of_payment, is_synced, sync_status)
-            VALUES (?, ?, ?, ?, 0, 'pending')
-        """, (patient_id, user_id, total_price, mode_of_payment))
+            INSERT INTO sales (patient_id, user_id, total_price, mode_of_payment, sale_date, updated_at, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 'pending')
+        """, (patient_id, user_id, total_price, mode_of_payment, current_time.isoformat(), current_time.isoformat()))
         sale_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -672,9 +662,9 @@ class Database:
         cursor = conn.cursor()
         current_time = datetime.now(pytz.UTC)
         cursor.execute("""
-            INSERT INTO sale_items (sale_id, drug_id, quantity, price, is_synced, sync_status)
-            VALUES (?, ?, ?, ?, 0, 'pending')
-        """, (sale_id, drug_id, quantity, price))
+            INSERT INTO sale_items (sale_id, drug_id, quantity, price, updated_at, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, 0, 'pending')
+        """, (sale_id, drug_id, quantity, price, current_time.isoformat()))
         sale_item_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -725,9 +715,9 @@ class Database:
         cursor = conn.cursor()
         current_time = datetime.now(pytz.UTC)
         cursor.execute("""
-            INSERT INTO suppliers (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, is_synced, sync_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')
-        """, (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes))
+            INSERT INTO suppliers (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, created_at, updated_at, is_synced, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')
+        """, (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, current_time.isoformat(), current_time.isoformat()))
         supplier_id = cursor.lastrowid
         conn.commit()
         conn.close()

@@ -17,6 +17,8 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
+    is_synced INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed')),
     CONSTRAINT username_not_empty CHECK (TRIM(username) != '')
 );
 
@@ -133,7 +135,7 @@ CREATE TABLE sale_items (
 CREATE TABLE sync_queue (
     queue_id INTEGER PRIMARY KEY AUTOINCREMENT,
     table_name TEXT NOT NULL,
-    operation TEXT NOT NULL,
+    operation TEXT NOT NULL CHECK (operation IN ('INSERT', 'UPDATE', 'DELETE')),
     record_id INTEGER NOT NULL,
     data TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
