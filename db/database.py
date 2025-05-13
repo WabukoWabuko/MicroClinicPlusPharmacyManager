@@ -225,6 +225,17 @@ class Database:
                 if 'is_synced' in data:
                     data['is_synced'] = bool(data['is_synced'])
 
+                # Ensure timestamps are in the correct format for Supabase
+                for key in ['created_at', 'updated_at', 'registration_date', 'prescription_date', 'sale_date']:
+                    if key in data and data[key]:
+                        try:
+                            dt = datetime.fromisoformat(data[key].replace("Z", "+00:00"))
+                            data[key] = dt.isoformat()
+                        except ValueError:
+                            dt = datetime.strptime(data[key], "%Y-%m-%d %H:%M:%S")
+                            dt = pytz.UTC.localize(dt)
+                            data[key] = dt.isoformat()
+
                 # Push to Supabase based on operation
                 if operation == 'INSERT':
                     response = self.supabase.table(table_name).insert(data).execute()
@@ -304,13 +315,24 @@ class Database:
                 if 'is_synced' in remote_row:
                     remote_row['is_synced'] = 1 if remote_row['is_synced'] else 0
 
+                # Convert Supabase timestamps to SQLite format
+                for key in ['created_at', 'updated_at', 'registration_date', 'prescription_date', 'sale_date']:
+                    if key in remote_row and remote_row[key]:
+                        dt = datetime.fromisoformat(remote_row[key].replace("Z", "+00:00"))
+                        remote_row[key] = dt.strftime("%Y-%m-%d %H:%M:%S")
+
                 cursor.execute(f"SELECT updated_at, is_synced FROM {table} WHERE {table[:-1]}_id = ?", (remote_id,))
                 local_row = cursor.fetchone()
 
                 if local_row:
                     local_updated_at_str = local_row[0] if local_row[0] else "1970-01-01 00:00:00"
-                    local_updated_at = datetime.strptime(local_updated_at_str, "%Y-%m-%d %H:%M:%S")
-                    local_updated_at = pytz.UTC.localize(local_updated_at)
+                    try:
+                        # Try parsing as ISO format first
+                        local_updated_at = datetime.fromisoformat(local_updated_at_str.replace("Z", "+00:00"))
+                    except ValueError:
+                        # Fall back to expected format
+                        local_updated_at = datetime.strptime(local_updated_at_str, "%Y-%m-%d %H:%M:%S")
+                    local_updated_at = pytz.UTC.localize(local_updated_at) if local_updated_at.tzinfo is None else local_updated_at
                     is_synced = bool(local_row[1])
 
                     if remote_updated_at > local_updated_at:
@@ -412,7 +434,7 @@ class Database:
         cursor.execute("""
             INSERT INTO patients (first_name, last_name, age, gender, contact, medical_history, registration_date, updated_at, is_synced, sync_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')
-        """, (first_name, last_name, age, gender, contact, medical_history, current_time.isoformat(), current_time.isoformat()))
+        """, (first_name, last_name, age, gender, contact, medical_history, current_time.strftime("%Y-%m-%d %H:%M:%S"), current_time.strftime("%Y-%m-%d %H:%M:%S")))
         patient_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -440,7 +462,7 @@ class Database:
         cursor.execute("""
             UPDATE patients SET first_name = ?, last_name = ?, age = ?, gender = ?, contact = ?, medical_history = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE patient_id = ?
-        """, (first_name, last_name, age, gender, contact, medical_history, updated_at.isoformat(), patient_id))
+        """, (first_name, last_name, age, gender, contact, medical_history, updated_at.strftime("%Y-%m-%d %H:%M:%S"), patient_id))
         conn.commit()
         conn.close()
         self.queue_sync_operation('patients', 'UPDATE', patient_id, {
@@ -491,7 +513,7 @@ class Database:
         cursor.execute("""
             INSERT INTO drugs (name, quantity, batch_number, expiry_date, price, created_at, updated_at, is_synced, sync_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'pending')
-        """, (name, quantity, batch_number, expiry_date, price, current_time.isoformat(), current_time.isoformat()))
+        """, (name, quantity, batch_number, expiry_date, price, current_time.strftime("%Y-%m-%d %H:%M:%S"), current_time.strftime("%Y-%m-%d %H:%M:%S")))
         drug_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -519,7 +541,7 @@ class Database:
         cursor.execute("""
             UPDATE drugs SET name = ?, quantity = ?, batch_number = ?, expiry_date = ?, price = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE drug_id = ?
-        """, (name, quantity, batch_number, expiry_date, price, updated_at.isoformat(), drug_id))
+        """, (name, quantity, batch_number, expiry_date, price, updated_at.strftime("%Y-%m-%d %H:%M:%S"), drug_id))
         conn.commit()
         conn.close()
         self.queue_sync_operation('drugs', 'UPDATE', drug_id, {
@@ -546,7 +568,7 @@ class Database:
         cursor.execute("""
             UPDATE drugs SET quantity = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE drug_id = ?
-        """, (new_quantity, updated_at.isoformat(), drug_id))
+        """, (new_quantity, updated_at.strftime("%Y-%m-%d %H:%M:%S"), drug_id))
         conn.commit()
         conn.close()
         self.queue_sync_operation('drugs', 'UPDATE', drug_id, {
@@ -598,7 +620,7 @@ class Database:
         cursor.execute("""
             UPDATE prescriptions SET patient_id = ?, user_id = ?, diagnosis = ?, notes = ?, drug_id = ?, dosage = ?, frequency = ?, duration = ?, quantity_prescribed = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE prescription_id = ?
-        """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, current_time.isoformat(), prescription_id))
+        """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, current_time.strftime("%Y-%m-%d %H:%M:%S"), prescription_id))
         conn.commit()
         conn.close()
         self.queue_sync_operation('prescriptions', 'UPDATE', prescription_id, {
@@ -616,7 +638,7 @@ class Database:
         cursor.execute("""
             INSERT INTO prescriptions (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, prescription_date, updated_at, is_synced, sync_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')
-        """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, current_time.isoformat(), current_time.isoformat()))
+        """, (patient_id, user_id, diagnosis, notes, drug_id, dosage, frequency, duration, quantity_prescribed, current_time.strftime("%Y-%m-%d %H:%M:%S"), current_time.strftime("%Y-%m-%d %H:%M:%S")))
         prescription_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -645,7 +667,7 @@ class Database:
         cursor.execute("""
             INSERT INTO sales (patient_id, user_id, total_price, mode_of_payment, sale_date, updated_at, is_synced, sync_status)
             VALUES (?, ?, ?, ?, ?, ?, 0, 'pending')
-        """, (patient_id, user_id, total_price, mode_of_payment, current_time.isoformat(), current_time.isoformat()))
+        """, (patient_id, user_id, total_price, mode_of_payment, current_time.strftime("%Y-%m-%d %H:%M:%S"), current_time.strftime("%Y-%m-%d %H:%M:%S")))
         sale_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -664,7 +686,7 @@ class Database:
         cursor.execute("""
             INSERT INTO sale_items (sale_id, drug_id, quantity, price, updated_at, is_synced, sync_status)
             VALUES (?, ?, ?, ?, ?, 0, 'pending')
-        """, (sale_id, drug_id, quantity, price, current_time.isoformat()))
+        """, (sale_id, drug_id, quantity, price, current_time.strftime("%Y-%m-%d %H:%M:%S")))
         sale_item_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -717,7 +739,7 @@ class Database:
         cursor.execute("""
             INSERT INTO suppliers (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, created_at, updated_at, is_synced, sync_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')
-        """, (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, current_time.isoformat(), current_time.isoformat()))
+        """, (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, current_time.strftime("%Y-%m-%d %H:%M:%S"), current_time.strftime("%Y-%m-%d %H:%M:%S")))
         supplier_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -749,7 +771,7 @@ class Database:
             SET name = ?, phone = ?, email = ?, address = ?, products_supplied = ?, last_delivery_date = ?,
                 responsible_person = ?, notes = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE supplier_id = ?
-        """, (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, current_time.isoformat(), supplier_id))
+        """, (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, current_time.strftime("%Y-%m-%d %H:%M:%S"), supplier_id))
         conn.commit()
         conn.close()
         self.queue_sync_operation('suppliers', 'UPDATE', supplier_id, {
@@ -777,7 +799,7 @@ class Database:
         cursor.execute("""
             INSERT INTO users (username, password_hash, role, created_at, updated_at, is_synced, sync_status)
             VALUES (?, ?, ?, ?, ?, 0, 'pending')
-        """, (username, password_hash, role, current_time.isoformat(), current_time.isoformat()))
+        """, (username, password_hash, role, current_time.strftime("%Y-%m-%d %H:%M:%S"), current_time.strftime("%Y-%m-%d %H:%M:%S")))
         user_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -805,7 +827,7 @@ class Database:
         cursor.execute("""
             UPDATE users SET username = ?, password_hash = ?, role = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE user_id = ?
-        """, (username, password_hash, role, current_time.isoformat(), user_id))
+        """, (username, password_hash, role, current_time.strftime("%Y-%m-%d %H:%M:%S"), user_id))
         conn.commit()
         conn.close()
         self.queue_sync_operation('users', 'UPDATE', user_id, {
