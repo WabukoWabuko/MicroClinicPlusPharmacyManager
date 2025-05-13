@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import requests
 import json
 import pytz
+import re
 
 class Database:
     def __init__(self):
@@ -85,6 +86,11 @@ class Database:
                     config = json.load(f)
                     default_config.update(config)
             self.sync_enabled = default_config["sync_enabled"]
+            if os.path.exists("last_sync.txt"):
+                with open("last_sync.txt", "r") as f:
+                    last_sync_str = f.read().strip()
+                    if last_sync_str:
+                        self.last_sync_time = datetime.fromisoformat(last_sync_str)
             return default_config
         except Exception as e:
             print(f"Error loading config: {e}")
@@ -98,6 +104,14 @@ class Database:
                 json.dump(config, f, indent=4)
         except Exception as e:
             print(f"Error saving config: {e}")
+
+    def save_last_sync_time(self):
+        """Save the last sync time to a file."""
+        try:
+            with open("last_sync.txt", "w") as f:
+                f.write(self.last_sync_time.isoformat())
+        except Exception as e:
+            print(f"Error saving last sync time: {e}")
 
     def table_exists(self, table_name):
         """Check if a table exists in the local SQLite database."""
@@ -153,6 +167,67 @@ class Database:
             INSERT INTO sync_queue (table_name, operation, record_id, data, status)
             VALUES (?, ?, ?, ?, 'pending')
         """, (table_name, operation, record_id, json.dumps(data)))
+        conn.commit()
+        conn.close()
+
+    def push_changes(self, tables):
+        """Push local changes to Supabase based on sync queue."""
+        conn = self.connect()
+        cursor = conn.cursor()
+
+        # Process pending operations in the sync queue
+        cursor.execute("SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY created_at")
+        pending_operations = cursor.fetchall()
+
+        for op in pending_operations:
+            queue_id = op['queue_id']
+            table_name = op['table_name']
+            operation = op['operation']
+            record_id = op['record_id']
+            data = json.loads(op['data']) if op['data'] else {}
+
+            try:
+                # Validate data before pushing (e.g., for patients table)
+                if table_name == 'patients' and data:
+                    if 'age' in data:
+                        try:
+                            age = int(data['age'])
+                            if age <= 0 or age > 150:
+                                print(f"Invalid age ({age}) for patient_id {record_id}. Skipping sync operation.")
+                                cursor.execute("UPDATE sync_queue SET status = 'failed' WHERE queue_id = ?", (queue_id,))
+                                conn.commit()
+                                continue
+                        except (ValueError, TypeError):
+                            print(f"Invalid age value ({data['age']}) for patient_id {record_id}. Skipping sync operation.")
+                            cursor.execute("UPDATE sync_queue SET status = 'failed' WHERE queue_id = ?", (queue_id,))
+                            conn.commit()
+                            continue
+
+                    if 'contact' in data:
+                        contact = str(data['contact']).strip()
+                        if not re.match(r'^\+[0-9]{3}[0-9]{9}$', contact):
+                            print(f"Invalid contact ({contact}) for patient_id {record_id}. Setting to default for sync.")
+                            data['contact'] = '+254000000000'
+
+                # Push to Supabase based on operation
+                if operation == 'INSERT':
+                    response = self.supabase.table(table_name).insert(data).execute()
+                    print(f"Pushed INSERT for {table_name} record ID {record_id} to Supabase")
+                elif operation == 'UPDATE':
+                    response = self.supabase.table(table_name).update(data).eq(f"{table_name[:-1]}_id", record_id).execute()
+                    print(f"Pushed UPDATE for {table_name} record ID {record_id} to Supabase")
+                elif operation == 'DELETE':
+                    response = self.supabase.table(table_name).delete().eq(f"{table_name[:-1]}_id", record_id).execute()
+                    print(f"Pushed DELETE for {table_name} record ID {record_id} to Supabase")
+
+                # Update sync status in local database
+                cursor.execute(f"UPDATE {table_name} SET is_synced = 1, sync_status = 'synced' WHERE {table_name[:-1]}_id = ?", (record_id,))
+                cursor.execute("UPDATE sync_queue SET status = 'synced' WHERE queue_id = ?", (queue_id,))
+
+            except Exception as e:
+                print(f"Error syncing {operation} for {table_name} record ID {record_id}: {e}")
+                cursor.execute("UPDATE sync_queue SET status = 'failed' WHERE queue_id = ?", (queue_id,))
+
         conn.commit()
         conn.close()
 
@@ -217,7 +292,6 @@ class Database:
                     if 'contact' in remote_row:
                         contact = str(remote_row['contact']).strip()
                         # Check if contact matches the pattern: + followed by 3-digit country code and 9 digits
-                        import re
                         if not re.match(r'^\+[0-9]{3}[0-9]{9}$', contact):
                             print(f"Warning: Invalid contact ({contact}) for patient_id {remote_id}. Setting to default.")
                             remote_row['contact'] = '+254000000000'  # Default valid contact
@@ -252,7 +326,7 @@ class Database:
         # Update last sync time
         self.last_sync_time = datetime.now()
         self.save_last_sync_time()
-        print(f"{self.last_sync_time}")
+        print(f"Sync completed at {self.last_sync_time}")
 
     def get_sync_history(self, limit=100):
         """Retrieve sync history from sync_queue with enriched details."""
@@ -725,6 +799,5 @@ class Database:
 
     def get_current_date(self):
         """Get the current date as a string in EAT (East Africa Time)."""
-        # EAT is UTC+3
-        eat_time = datetime.now() + timedelta(hours=3)
+        eat_time = datetime.now(pytz.timezone('Africa/Nairobi'))
         return eat_time.strftime("%Y-%m-%d %H:%M:%S")
