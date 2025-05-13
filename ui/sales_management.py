@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
                              QLineEdit, QPushButton, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QFileDialog, QMessageBox)
+                             QHeaderView, QFileDialog, QMessageBox, QCompleter)
 from PyQt6.QtCore import Qt
 from db.database import Database
 from reportlab.lib.pagesizes import A4
@@ -17,7 +17,7 @@ class SearchableComboBox(QComboBox):
         super().__init__(parent)
         self.setEditable(True)
         self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.completer().setCompletionMode(QComboBox.CompleterMode.PopupCompletion)
+        self.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.completer().setFilterMode(Qt.MatchFlag.MatchContains)
         self.setStyleSheet("""
             QComboBox {
