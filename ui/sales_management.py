@@ -403,12 +403,14 @@ class SalesManagementWidget(QWidget):
             mode_of_payment=mode_of_payment
         )
         for item in self.sale_items:
+            # Simply record the sale item without reducing stock again
             self.db.add_sale_item(
                 sale_id=sale_id,
                 drug_id=item['drug_id'],
                 quantity=item['quantity'],
                 price=item['price']  # Store in KSh
             )
+
         QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
         self.load_data()  # Update the sales table
         self.sale_items = []  # Clear sale_items without restoring stock
@@ -548,7 +550,7 @@ class SalesManagementWidget(QWidget):
             ('FONTSIZE', (0,1), (-1,-1), 9),
             ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
             ('BOTTOMPADDING', (0,0), (-1,0), 6),
-            ('TOPPADING', (0,0), (-1,0), 6),
+            ('TOPPADDING', (0,0), (-1,0), 6),
         ]))
         elements.append(items_table)
         elements.append(Spacer(1, 12))
