@@ -36,7 +36,7 @@ CREATE TABLE patients (
     CONSTRAINT first_name_not_empty CHECK (TRIM(first_name) != ''),
     CONSTRAINT last_name_not_empty CHECK (TRIM(last_name) != ''),
     CONSTRAINT contact_not_empty CHECK (TRIM(contact) != ''),
-    CONSTRAINT contact_format CHECK (contact GLOB '[+]?[1-9][0-9]{7,14}')
+    CONSTRAINT contact_format CHECK (contact GLOB '+[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
 );
 
 -- Drugs table: Stores inventory details

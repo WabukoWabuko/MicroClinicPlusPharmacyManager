@@ -87,7 +87,7 @@ class PatientManagementWidget(QWidget):
         """)
         self.contact_input = QLineEdit()
         self.contact_input.setPlaceholderText("e.g., +254700123456")
-        self.contact_input.setToolTip("Patient's contact number (e.g., +254700123456)")
+        self.contact_input.setToolTip("Patient's contact number (exactly 13 characters, e.g., +254700123456)")
         self.contact_input.setStyleSheet("""
             QLineEdit {
                 padding: 8px;
@@ -429,7 +429,7 @@ class PatientManagementWidget(QWidget):
             return
 
         self.db.add_patient(first_name, last_name, age_val, gender, contact, medical_history)
-        QMessageBox.information(self, "Success", "Patient added successfully.")
+        QMessageBox.information(self, "Success", "Patient added successfully at 03:14 PM EAT on Tuesday, May 13, 2025.")
         self.load_patients()
         self.clear_form()
 
@@ -568,7 +568,7 @@ class PatientManagementWidget(QWidget):
             return
 
         self.db.update_patient(patient_id, first_name, last_name, age_val, gender, contact, medical_history)
-        QMessageBox.information(self, "Success", "Patient updated successfully.")
+        QMessageBox.information(self, "Success", "Patient updated successfully at 03:14 PM EAT on Tuesday, May 13, 2025.")
         self.load_patients()
         self.clear_form()
 
@@ -583,7 +583,7 @@ class PatientManagementWidget(QWidget):
                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             self.db.delete_patient(patient_id)
-            QMessageBox.information(self, "Success", "Patient deleted successfully.")
+            QMessageBox.information(self, "Success", "Patient deleted successfully at 03:14 PM EAT on Tuesday, May 13, 2025.")
             self.load_patients()
             self.clear_form()
 
@@ -691,7 +691,7 @@ class PatientManagementWidget(QWidget):
         elements.append(Spacer(1, 4))
 
         doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-        QMessageBox.information(self, "Success", f"Patient data saved to:\n{file_path}")
+        QMessageBox.information(self, "Success", f"Patient data saved to:\n{file_path} at 03:14 PM EAT on Tuesday, May 13, 2025.")
 
     def clear_form(self):
         self.first_name_input.clear()

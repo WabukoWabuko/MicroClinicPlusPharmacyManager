@@ -31,7 +31,11 @@ CREATE TABLE patients (
     registration_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_synced BOOLEAN DEFAULT FALSE,
-    sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed'))
+    sync_status TEXT DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'failed')),
+    CONSTRAINT first_name_not_empty CHECK (TRIM(first_name) != ''),
+    CONSTRAINT last_name_not_empty CHECK (TRIM(last_name) != ''),
+    CONSTRAINT contact_not_empty CHECK (TRIM(contact) != ''),
+    CONSTRAINT contact_format CHECK (contact ~ '^\+[0-9]{3}[0-9]{9}$')
 );
 
 -- Drugs table: Stores inventory details
