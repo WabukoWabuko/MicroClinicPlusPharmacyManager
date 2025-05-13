@@ -35,7 +35,7 @@ class Database:
             conn.commit()
             conn.close()
 
-        # Create sync_queue table in SQLite if not exists (redundant but kept for compatibility)
+        # Create sync_queue table in SQLite if not exists
         conn = self.connect()
         conn.execute("""
             CREATE TABLE IF NOT EXISTS sync_queue (
@@ -48,7 +48,7 @@ class Database:
                 status TEXT DEFAULT 'pending'
             )
         """)
-        # Create suppliers table in SQLite if not exists (redundant but kept for compatibility)
+        # Create suppliers table in SQLite if not exists
         conn.execute("""
             CREATE TABLE IF NOT EXISTS suppliers (
                 supplier_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -191,6 +191,8 @@ class Database:
         }
         pending_operations = sorted(pending_operations, key=lambda op: table_priority.get(op['table_name'], 5))
 
+        # Force resync of all users if any dependent table fails due to user_id
+        user_ids_to_resync = set()
         for op in pending_operations:
             queue_id = op['queue_id']
             table_name = op['table_name']
@@ -251,8 +253,45 @@ class Database:
                 cursor.execute("UPDATE sync_queue SET status = 'synced' WHERE queue_id = ?", (queue_id,))
 
             except Exception as e:
+                error_msg = str(e)
                 print(f"Error syncing {operation} for {table_name} record ID {record_id}: {e}")
                 cursor.execute("UPDATE sync_queue SET status = 'failed' WHERE queue_id = ?", (queue_id,))
+                # Collect user_ids to resync if foreign key violation
+                if '23503' in error_msg and 'user_id' in error_msg:
+                    cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (data.get('user_id'),))
+                    user = cursor.fetchone()
+                    if user:
+                        user_ids_to_resync.add(user['user_id'])
+                elif '23503' in error_msg and 'sale_id' in error_msg:
+                    cursor.execute("SELECT sale_id FROM sales WHERE sale_id = ?", (data.get('sale_id'),))
+                    sale = cursor.fetchone()
+                    if sale:
+                        cursor.execute("SELECT user_id FROM sales WHERE sale_id = ?", (sale['sale_id'],))
+                        user = cursor.fetchone()
+                        if user:
+                            user_ids_to_resync.add(user['user_id'])
+
+        # Resync users if any dependencies failed
+        if user_ids_to_resync:
+            cursor.execute("SELECT * FROM users WHERE user_id IN ({})".format(','.join('?' * len(user_ids_to_resync))), list(user_ids_to_resync))
+            users_to_resync = cursor.fetchall()
+            for user in users_to_resync:
+                user_data = {
+                    'user_id': user['user_id'],
+                    'username': user['username'],
+                    'password_hash': user['password_hash'],
+                    'role': user['role'],
+                    'created_at': user['created_at'],
+                    'updated_at': user['updated_at'],
+                    'is_synced': bool(user['is_synced']),
+                    'sync_status': user['sync_status']
+                }
+                try:
+                    response = self.supabase.table('users').upsert(user_data).execute()
+                    print(f"Resynced user with ID {user['user_id']} to Supabase")
+                    cursor.execute("UPDATE users SET is_synced = 1, sync_status = 'synced' WHERE user_id = ?", (user['user_id'],))
+                except Exception as e:
+                    print(f"Error resyncing user ID {user['user_id']}: {e}")
 
         conn.commit()
         conn.close()
