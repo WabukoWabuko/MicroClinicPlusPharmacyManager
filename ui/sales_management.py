@@ -395,28 +395,24 @@ class SalesManagementWidget(QWidget):
         total_price = sum(item['price'] for item in self.sale_items)  # Total in KSh
         mode_of_payment = self.payment_mode_combo.currentText()  # Get selected payment mode
 
-        try:
-            # Record the sale
-            sale_id = self.db.add_sale(
-                patient_id=patient_id,
-                user_id=self.main_window.current_user['user_id'],
-                total_price=total_price,
-                mode_of_payment=mode_of_payment
+        # Record the sale
+        sale_id = self.db.add_sale(
+            patient_id=patient_id,
+            user_id=self.main_window.current_user['user_id'],
+            total_price=total_price,
+            mode_of_payment=mode_of_payment
+        )
+        for item in self.sale_items:
+            self.db.add_sale_item(
+                sale_id=sale_id,
+                drug_id=item['drug_id'],
+                quantity=item['quantity'],
+                price=item['price']  # Store in KSh
             )
-            for item in self.sale_items:
-                self.db.add_sale_item(
-                    sale_id=sale_id,
-                    drug_id=item['drug_id'],
-                    quantity=item['quantity'],
-                    price=item['price']  # Store in KSh
-                )
-            QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
-            self.load_data()  # Update the sales table
-            self.sale_items = []  # Clear sale_items without restoring stock
-            self.sale_items_table.setRowCount(0)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to complete sale: {str(e)}")
-            print(f"Error in complete_sale: {str(e)}")
+        QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
+        self.load_data()  # Update the sales table
+        self.sale_items = []  # Clear sale_items without restoring stock
+        self.sale_items_table.setRowCount(0)
 
     def generate_receipt(self):
         """Generate a slick PDF receipt with clean styling and selected currency."""
