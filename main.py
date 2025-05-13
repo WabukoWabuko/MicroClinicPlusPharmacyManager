@@ -117,11 +117,14 @@ class MainWindow(QMainWindow):
             ("Reporting\nDashboard", self.show_dashboard),
         ])
 
+        # Define newline character outside f-string
+        newline = '\n'
+
         # Add buttons to the grid (side by side)
         for text, action in buttons:
             button = QPushButton(text)
             button.setStyleSheet(button_style)
-            button.setToolTip(f"Navigate to {text.lower().replace('\n', ' ')}")
+            button.setToolTip(f"Navigate to {text.lower().replace(newline, ' ')}")
             button.clicked.connect(action)
             button_grid.addWidget(button)
 
