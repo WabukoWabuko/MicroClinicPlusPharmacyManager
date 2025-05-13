@@ -328,7 +328,7 @@ class SalesManagementWidget(QWidget):
 
         drug = self.db.get_drug(drug_id)
         if drug['quantity'] < quantity_val:
-            QMessageBox.warning(self, "Error", f"Insufficient stock for {drug['name']}. Available: {drug['quantity']}")
+            QMessageBox.warning(self, "Error", f"Available quantity for {drug['name']} is: {drug['quantity']}")
             return
 
         # Reduce stock immediately when adding the item
@@ -394,6 +394,8 @@ class SalesManagementWidget(QWidget):
 
         total_price = sum(item['price'] for item in self.sale_items)  # Total in KSh
         mode_of_payment = self.payment_mode_combo.currentText()  # Get selected payment mode
+        sale_successful = False
+
         try:
             # Record the sale
             sale_id = self.db.add_sale(
@@ -409,13 +411,22 @@ class SalesManagementWidget(QWidget):
                     quantity=item['quantity'],
                     price=item['price']  # Store in KSh
                 )
-
+            sale_successful = True
             QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
-            self.load_data()  # This will update the sales_table immediately
-            self.sale_items = []  # Clear sale_items without restoring stock
-            self.sale_items_table.setRowCount(0)
-        except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+
+        except Exception as e:
+            # Catch all exceptions to provide detailed error information
+            QMessageBox.critical(self, "Error", f"Failed to complete sale: {str(e)}")
+            # Optionally, you can log the error for debugging
+            print(f"Error in complete_sale: {str(e)}")
+
+        finally:
+            # Always update the sales table, even if an error occurs
+            self.load_data()
+            # Only clear the sale items if the sale was successful
+            if sale_successful:
+                self.sale_items = []  # Clear sale_items without restoring stock
+                self.sale_items_table.setRowCount(0)
 
     def generate_receipt(self):
         """Generate a slick PDF receipt with clean styling and selected currency."""
