@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
                              QLineEdit, QPushButton, QTableWidget, QTableWidgetItem,
                              QHeaderView, QFileDialog, QMessageBox, QCompleter)
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from db.database import Database
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -11,6 +11,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.graphics.shapes import Rect, Image
 import os
+from datetime import datetime, timedelta
 
 class SearchableComboBox(QComboBox):
     def __init__(self, parent=None):
@@ -434,10 +435,20 @@ class SalesManagementWidget(QWidget):
                 # Reduce stock using reduce_drug_stock
                 warning = self.db.reduce_drug_stock(item['drug_id'], item['quantity'])
                 if warning:
-                    QMessageBox.information(self, "Low Stock Warning", warning)
+                    # Extract remaining quantity from the warning message
+                    drug = self.db.get_drug(item['drug_id'])
+                    remaining = drug['quantity']
+                    message = f"Stock for {item['name']} is low. Remaining: {remaining} units."
+                    msg_box = QMessageBox(self)
+                    msg_box.setWindowTitle("Low Stock Warning")
+                    msg_box.setText(message)
+                    msg_box.setStandardButtons(QMessageBox.StandardButton.NoButton)  # No buttons to auto-close
+                    msg_box.show()
+                    # Auto-close after 2 seconds (2000 milliseconds)
+                    QTimer.singleShot(2000, msg_box.close)
 
             QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
-            self.load_data()
+            self.load_data()  # This will update the sales_table immediately
             self.clear_sale_items()
         except ValueError as e:
             QMessageBox.warning(self, "Error", str(e))
@@ -497,15 +508,21 @@ class SalesManagementWidget(QWidget):
         elements.append(HRFlowable(width=doc.width, thickness=0.5, color=colors.black))
         elements.append(Spacer(1, 8))
 
+        # Adjust time to Nairobi (UTC+3)
+        sale_date_utc = datetime.fromisoformat(sale['sale_date'].replace('Z', '+00:00'))
+        sale_date_nairobi = sale_date_utc + timedelta(hours=3)
+        sale_date_str = sale_date_nairobi.strftime('%Y-%m-%d')
+        sale_time_str = sale_date_nairobi.strftime('%H:%M')
+
         # Receipt Metadata
-        receipt_id = f"RCPT-{sale['sale_date'][:10].replace('-', '')}-{sale_id:04d}"
+        receipt_id = f"RCPT-{sale_date_str.replace('-', '')}-{sale_id:04d}"
         meta_data = [
             ["Receipt ID:", receipt_id],
-            ["Date:", sale['sale_date'][:10]],
-            ["Time:", sale['sale_date'][11:16]],
+            ["Date:", sale_date_str],
+            ["Time:", sale_time_str],
             ["Issued By:", self.main_window.current_user['username']],
             ["Currency:", selected_currency],
-            ["Payment Mode:", sale['mode_of_payment']]  # Add payment mode to receipt
+            ["Payment Mode:", sale['mode_of_payment']]
         ]
         meta_table = Table(meta_data, colWidths=[40*mm, doc.width-40*mm])
         meta_table.setStyle(TableStyle([
@@ -517,11 +534,21 @@ class SalesManagementWidget(QWidget):
         elements.append(meta_table)
         elements.append(Spacer(1, 12))
 
+        # Compute age from DOB if available, otherwise use age
+        patient_age = patient.get('age', 'N/A')
+        if 'dob' in patient and patient['dob'] and patient['dob'] != 'N/A':
+            try:
+                dob = datetime.strptime(patient['dob'], '%Y-%m-%d')
+                today = datetime(2025, 5, 13)  # Current date as of May 13, 2025
+                patient_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            except ValueError:
+                patient_age = patient.get('age', 'N/A')
+
         # Patient Info
         patient_data = [
             ["Patient Name:", f"{patient['first_name']} {patient['last_name']}"],
             ["Patient ID:", f"PT-{patient['patient_id']:05d}"],
-            ["Date of Birth:", patient.get('dob', 'N/A')]
+            ["Age:", str(patient_age)]
         ]
         pat_table = Table(patient_data, colWidths=[40*mm, doc.width-40*mm])
         pat_table.setStyle(TableStyle([
