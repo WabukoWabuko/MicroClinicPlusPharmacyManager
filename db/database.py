@@ -370,18 +370,18 @@ class Database:
         conn.close()
         return dict(drug) if drug else None
 
-    def update_drug(self, drug_id, quantity, batch_number, expiry_date, price):
-        """Update a drug's details."""
+    def update_drug(self, drug_id, name, quantity, batch_number, expiry_date, price):
+        """Update a drug's details, including name."""
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            UPDATE drugs SET quantity = ?, batch_number = ?, expiry_date = ?, price = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
+            UPDATE drugs SET name = ?, quantity = ?, batch_number = ?, expiry_date = ?, price = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE drug_id = ?
-        """, (quantity, batch_number, expiry_date, price, datetime.now().isoformat(), drug_id))
+        """, (name, quantity, batch_number, expiry_date, price, datetime.now().isoformat(), drug_id))
         conn.commit()
         conn.close()
         self.queue_sync_operation('drugs', 'UPDATE', drug_id, {
-            'drug_id': drug_id, 'quantity': quantity, 'batch_number': batch_number,
+            'drug_id': drug_id, 'name': name, 'quantity': quantity, 'batch_number': batch_number,
             'expiry_date': expiry_date, 'price': price, 'updated_at': datetime.now().isoformat(),
             'is_synced': False, 'sync_status': 'pending'
         })
