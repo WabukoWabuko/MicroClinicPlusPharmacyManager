@@ -1,7 +1,7 @@
 import sqlite3
 import bcrypt
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import requests
@@ -377,7 +377,7 @@ class Database:
         cursor.execute("""
             UPDATE drugs SET quantity = ?, batch_number = ?, expiry_date = ?, price = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE drug_id = ?
-        """, (quantity, batch_number, expiry_date, price, datetime.now(), drug_id))
+        """, (quantity, batch_number, expiry_date, price, datetime.now().isoformat(), drug_id))
         conn.commit()
         conn.close()
         self.queue_sync_operation('drugs', 'UPDATE', drug_id, {
@@ -403,7 +403,7 @@ class Database:
         cursor.execute("""
             UPDATE drugs SET quantity = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE drug_id = ?
-        """, (new_quantity, datetime.now(), drug_id))
+        """, (new_quantity, datetime.now().isoformat(), drug_id))
         conn.commit()
         conn.close()
         self.queue_sync_operation('drugs', 'UPDATE', drug_id, {
@@ -483,9 +483,7 @@ class Database:
         return sale_id
 
     def add_sale_item(self, sale_id, drug_id, quantity, price):
-        """Add a sale item and reduce drug stock."""
-        stock_warning = self.reduce_drug_stock(drug_id, quantity)
-
+        """Add a sale item to the database without modifying stock."""
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute("""
@@ -500,7 +498,6 @@ class Database:
             'quantity': quantity, 'price': price, 'updated_at': datetime.now().isoformat(),
             'is_synced': False, 'sync_status': 'pending'
         })
-        return stock_warning
 
     def get_sale_items(self, sale_id):
         """Retrieve sale items for a sale with drug names."""
@@ -575,7 +572,7 @@ class Database:
             SET name = ?, phone = ?, email = ?, address = ?, products_supplied = ?, last_delivery_date = ?,
                 responsible_person = ?, notes = ?, updated_at = ?, is_synced = 0, sync_status = 'pending'
             WHERE supplier_id = ?
-        """, (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, datetime.now(), supplier_id))
+        """, (name, phone, email, address, products_supplied, last_delivery_date, responsible_person, notes, datetime.now().isoformat(), supplier_id))
         conn.commit()
         conn.close()
         self.queue_sync_operation('suppliers', 'UPDATE', supplier_id, {
@@ -624,7 +621,7 @@ class Database:
         cursor.execute("""
             UPDATE users SET username = ?, password_hash = ?, role = ?, updated_at = ?
             WHERE user_id = ?
-        """, (username, password_hash, role, datetime.now(), user_id))
+        """, (username, password_hash, role, datetime.now().isoformat(), user_id))
         conn.commit()
         conn.close()
 
@@ -637,5 +634,7 @@ class Database:
         conn.close()
 
     def get_current_date(self):
-        """Get the current date as a string."""
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        """Get the current date as a string in EAT (East Africa Time)."""
+        # EAT is UTC+3
+        eat_time = datetime.now() + timedelta(hours=3)
+        return eat_time.strftime("%Y-%m-%d %H:%M:%S")
