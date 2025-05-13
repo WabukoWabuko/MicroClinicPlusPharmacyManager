@@ -125,7 +125,7 @@ class SalesManagementWidget(QWidget):
 
         # Payment mode selection
         self.payment_mode_combo = QComboBox()
-        self.payment_mode_combo.addItems(["cash", "card", "mobile"])
+        self.payment_mode_combo.addItems(["Cash", "Card", "Mobile"])
         self.payment_mode_combo.setToolTip("Select mode of payment")
         self.payment_mode_combo.setStyleSheet("""
             QComboBox {
@@ -138,7 +138,7 @@ class SalesManagementWidget(QWidget):
                 border: 1px solid #4CAF50;
             }
         """)
-        self.payment_mode_combo.setCurrentText("cash")  # Default to cash
+        self.payment_mode_combo.setCurrentText("Cash")  # Default to Cash
 
         left_form.addWidget(QLabel("Patient (Search):"))
         left_form.addWidget(self.patient_search_combo)
