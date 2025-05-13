@@ -431,13 +431,10 @@ class SalesManagementWidget(QWidget):
                     quantity=item['quantity'],
                     price=item['price']  # Store in KSh
                 )
-                # Reduce stock
-                new_quantity = self.db.get_drug(item['drug_id'])['quantity'] - item['quantity']
-                self.db.update_drug_quantity(item['drug_id'], new_quantity)
-                # Check if stock is low
-                if new_quantity <= self.low_stock_threshold:
-                    QMessageBox.information(self, "Low Stock Warning",
-                                            f"Stock for {item['name']} is low. Remaining: {new_quantity} units.")
+                # Reduce stock using reduce_drug_stock
+                warning = self.db.reduce_drug_stock(item['drug_id'], item['quantity'])
+                if warning:
+                    QMessageBox.information(self, "Low Stock Warning", warning)
 
             QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
             self.load_data()
