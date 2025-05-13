@@ -413,10 +413,22 @@ class SettingsWidget(QWidget):
         if not self.db.supabase:
             QMessageBox.warning(self, "Sync", "Supabase not configured. Check credentials.")
             return
-        self.db.sync_data()
-        self.status_label.setText(self.get_sync_status())
-        self.update_sync_table()
-        QMessageBox.information(self, "Sync", "Manual sync completed.")
+        try:
+            self.db.sync_data()
+            self.status_label.setText(self.get_sync_status())
+            self.update_sync_table()
+            QMessageBox.information(self, "Sync", "Manual sync completed successfully at 02:36 PM EAT on Tuesday, May 13, 2025.")
+        except sqlite3.IntegrityError as e:
+            self.status_label.setText(f"Sync failed: {str(e)}")
+            self.update_sync_table()
+            retry = QMessageBox.warning(self, "Sync Error", f"Sync failed due to data integrity issue: {str(e)}\nWould you like to retry?",
+                                      QMessageBox.StandardButton.Retry | QMessageBox.StandardButton.Cancel)
+            if retry == QMessageBox.StandardButton.Retry:
+                self.manual_sync()
+        except Exception as e:
+            self.status_label.setText(f"Sync failed: {str(e)}")
+            self.update_sync_table()
+            QMessageBox.critical(self, "Sync Error", f"An error occurred during sync: {str(e)}")
 
     def save_settings(self):
         """Save settings and update sync status."""
@@ -483,7 +495,7 @@ class SettingsWidget(QWidget):
         
         self.status_label.setText(self.get_sync_status())
         self.update_sync_table()
-        QMessageBox.information(self, "Settings", "Settings saved successfully.")
+        QMessageBox.information(self, "Settings", "Settings saved successfully at 02:36 PM EAT on Tuesday, May 13, 2025.")
 
     def update_sync_table(self):
         """Update the sync history table."""
