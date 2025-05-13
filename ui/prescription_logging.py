@@ -10,7 +10,7 @@ class SearchableComboBox(QComboBox):
         self.setEditable(True)
         self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.completer().setFilterMode(Qt.MatchContains)
+        self.completer().setFilterMode(Qt.MatchFlag.MatchContains)
         self.setStyleSheet("""
             QComboBox {
                 padding: 8px;
@@ -42,37 +42,9 @@ class PrescriptionLoggingWidget(QWidget):
         # Searchable patient combo
         self.patient_search_combo = SearchableComboBox()
         self.patient_search_combo.setToolTip("Search or select patient")
-        # Shortlist patient combo
-        self.patient_shortlist_combo = QComboBox()
-        self.patient_shortlist_combo.setToolTip("Select from frequent patients")
-        self.patient_shortlist_combo.setStyleSheet("""
-            QComboBox {
-                padding: 8px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                font-size: 14px;
-            }
-            QComboBox:focus {
-                border: 1px solid #4CAF50;
-            }
-        """)
         # Searchable drug combo
         self.drug_search_combo = SearchableComboBox()
         self.drug_search_combo.setToolTip("Search or select drug")
-        # Shortlist drug combo
-        self.drug_shortlist_combo = QComboBox()
-        self.drug_shortlist_combo.setToolTip("Select from frequent drugs")
-        self.drug_shortlist_combo.setStyleSheet("""
-            QComboBox {
-                padding: 8px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                font-size: 14px;
-            }
-            QComboBox:focus {
-                border: 1px solid #4CAF50;
-            }
-        """)
         self.diagnosis_input = QTextEdit()
         self.diagnosis_input.setPlaceholderText("Enter diagnosis")
         self.diagnosis_input.setToolTip("Enter patient diagnosis")
@@ -160,12 +132,8 @@ class PrescriptionLoggingWidget(QWidget):
 
         left_form.addWidget(QLabel("Patient (Search):"))
         left_form.addWidget(self.patient_search_combo)
-        left_form.addWidget(QLabel("Patient (Shortlist):"))
-        left_form.addWidget(self.patient_shortlist_combo)
         left_form.addWidget(QLabel("Drug (Search):"))
         left_form.addWidget(self.drug_search_combo)
-        left_form.addWidget(QLabel("Drug (Shortlist):"))
-        left_form.addWidget(self.drug_shortlist_combo)
         left_form.addWidget(QLabel("Diagnosis:"))
         left_form.addWidget(self.diagnosis_input)
         right_form.addWidget(QLabel("Dosage:"))
@@ -276,12 +244,6 @@ class PrescriptionLoggingWidget(QWidget):
         self.patient_search_combo.addItem("Select Patient")
         for patient in patients:
             self.patient_search_combo.addItem(f"{patient['first_name']} {patient['last_name']}", patient['patient_id'])
-        # Load patient shortlist (top 5)
-        top_patients = self.db.get_top_patients(5)  # Assuming this method exists
-        self.patient_shortlist_combo.clear()
-        self.patient_shortlist_combo.addItem("Select Frequent Patient")
-        for patient in top_patients:
-            self.patient_shortlist_combo.addItem(f"{patient['first_name']} {patient['last_name']}", patient['patient_id'])
 
         # Load drugs
         drugs = self.db.get_all_drugs()
@@ -289,12 +251,6 @@ class PrescriptionLoggingWidget(QWidget):
         self.drug_search_combo.addItem("Select Drug")
         for drug in drugs:
             self.drug_search_combo.addItem(drug['name'], drug['drug_id'])
-        # Load drug shortlist (top 5)
-        top_drugs = self.db.get_top_drugs(5)  # Assuming this method exists
-        self.drug_shortlist_combo.clear()
-        self.drug_shortlist_combo.addItem("Select Frequent Drug")
-        for drug in top_drugs:
-            self.drug_shortlist_combo.addItem(drug['name'], drug['drug_id'])
 
         # Load prescriptions
         prescriptions = self.db.get_all_prescriptions()
@@ -310,8 +266,8 @@ class PrescriptionLoggingWidget(QWidget):
             self.prescription_table.setItem(row, 5, QTableWidgetItem(str(prescription['quantity_prescribed'])))
 
     def add_prescription(self):
-        patient_id = self.patient_search_combo.currentData() or self.patient_shortlist_combo.currentData()
-        drug_id = self.drug_search_combo.currentData() or self.drug_shortlist_combo.currentData()
+        patient_id = self.patient_search_combo.currentData()
+        drug_id = self.drug_search_combo.currentData()
         diagnosis = self.diagnosis_input.toPlainText().strip()
         notes = self.notes_input.toPlainText().strip()
         dosage = self.dosage_input.text().strip()
@@ -319,10 +275,10 @@ class PrescriptionLoggingWidget(QWidget):
         duration = self.duration_input.text().strip()
         quantity = self.quantity_input.text().strip()
 
-        if not patient_id or (self.patient_search_combo.currentText() == "Select Patient" and self.patient_shortlist_combo.currentText() == "Select Frequent Patient"):
+        if not patient_id or self.patient_search_combo.currentText() == "Select Patient":
             QMessageBox.warning(self, "Error", "Please select a patient.")
             return
-        if not drug_id or (self.drug_search_combo.currentText() == "Select Drug" and self.drug_shortlist_combo.currentText() == "Select Frequent Drug"):
+        if not drug_id or self.drug_search_combo.currentText() == "Select Drug":
             QMessageBox.warning(self, "Error", "Please select a drug.")
             return
         if not diagnosis:
@@ -369,9 +325,7 @@ class PrescriptionLoggingWidget(QWidget):
 
     def clear_form(self):
         self.patient_search_combo.setCurrentIndex(0)
-        self.patient_shortlist_combo.setCurrentIndex(0)
         self.drug_search_combo.setCurrentIndex(0)
-        self.drug_shortlist_combo.setCurrentIndex(0)
         self.diagnosis_input.clear()
         self.notes_input.clear()
         self.dosage_input.clear()
