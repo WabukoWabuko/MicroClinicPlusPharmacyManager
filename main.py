@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QGridLayout
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from ui.login import LoginWidget
 from ui.patient_management import PatientManagementWidget
 from ui.inventory_management import InventoryManagementWidget
@@ -27,24 +27,25 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
 
-        # Add a top bar for the title and status dot
-        self.top_bar = QHBoxLayout()
-        self.layout.addLayout(self.top_bar)
-
         # Title at top-center
-        title = QLabel("MicroClinic Plus Pharmacy Manager")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF; margin: 10px;")
-        self.top_bar.addWidget(title)
+        self.title = QLabel("MicroClinic Plus Pharmacy Manager")
+        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title.setStyleSheet("font-size: 19px; font-weight: bold; color: #FFFFFF; margin: 10px;")
+        self.layout.addWidget(self.title)
 
-        # Status dot with dynamic text on top-left
+        # Status label below the title
         self.status_label = QLabel("● Online")
         self.status_label.setStyleSheet("font-size: 20px; color: #00FF00; margin: 10px;")
-        self.top_bar.addWidget(self.status_label)
+        self.layout.addWidget(self.status_label, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
         self.layout.addWidget(self.content_widget)
+
+        # Set up a QTimer to check internet status every 5 seconds
+        self.status_timer = QTimer(self)
+        self.status_timer.timeout.connect(self.update_status_dot)
+        self.status_timer.start(5000)  # 5000 ms = 5 seconds
 
         self.show_login()
 
