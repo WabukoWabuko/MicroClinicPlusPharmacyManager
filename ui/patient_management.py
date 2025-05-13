@@ -24,7 +24,7 @@ class PatientManagementWidget(QWidget):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
-        # Form for adding patients
+        # Form for managing patients
         form_layout = QHBoxLayout()
         left_form = QVBoxLayout()
         right_form = QVBoxLayout()
@@ -151,6 +151,42 @@ class PatientManagementWidget(QWidget):
                 background-color: #3d8b40;
             }
         """)
+        update_button = QPushButton("Update Patient")
+        update_button.setToolTip("Update selected patient")
+        update_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #1565C0;
+            }
+        """)
+        delete_button = QPushButton("Delete Patient")
+        delete_button.setToolTip("Delete selected patient")
+        delete_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f44336;
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #d32f2f;
+            }
+            QPushButton:pressed {
+                background-color: #b71c1c;
+            }
+        """)
         print_button = QPushButton("Print Patient Data")
         print_button.setToolTip("Print selected patient's data to PDF")
         print_button.setStyleSheet("""
@@ -206,10 +242,14 @@ class PatientManagementWidget(QWidget):
             }
         """)
         add_button.clicked.connect(self.add_patient)
+        update_button.clicked.connect(self.update_patient)
+        delete_button.clicked.connect(self.delete_patient)
         print_button.clicked.connect(self.print_patient_data)
         clear_button.clicked.connect(self.clear_form)
         back_button.clicked.connect(self.main_window.show_menu)
         button_layout.addWidget(add_button)
+        button_layout.addWidget(update_button)
+        button_layout.addWidget(delete_button)
         button_layout.addWidget(print_button)
         button_layout.addWidget(clear_button)
         button_layout.addWidget(back_button)
@@ -231,6 +271,7 @@ class PatientManagementWidget(QWidget):
                 padding: 8px;
             }
         """)
+        self.patient_table.clicked.connect(self.load_patient_to_form)
         main_layout.addWidget(self.patient_table)
 
         main_layout.addStretch()
@@ -248,6 +289,16 @@ class PatientManagementWidget(QWidget):
             self.patient_table.setItem(row, 4, QTableWidgetItem(patient['gender']))
             self.patient_table.setItem(row, 5, QTableWidgetItem(patient['contact']))
             self.patient_table.setItem(row, 6, QTableWidgetItem(patient['medical_history'] if patient['medical_history'] else "N/A"))
+
+    def load_patient_to_form(self):
+        row = self.patient_table.currentRow()
+        if row >= 0:
+            self.first_name_input.setText(self.patient_table.item(row, 1).text())
+            self.last_name_input.setText(self.patient_table.item(row, 2).text())
+            self.age_input.setText(self.patient_table.item(row, 3).text())
+            self.gender_combo.setCurrentText(self.patient_table.item(row, 4).text())
+            self.contact_input.setText(self.patient_table.item(row, 5).text())
+            self.medical_history_input.setText(self.patient_table.item(row, 6).text() if self.patient_table.item(row, 6).text() != "N/A" else "")
 
     def add_patient(self):
         first_name = self.first_name_input.text().strip()
@@ -381,6 +432,160 @@ class PatientManagementWidget(QWidget):
         QMessageBox.information(self, "Success", "Patient added successfully.")
         self.load_patients()
         self.clear_form()
+
+    def update_patient(self):
+        row = self.patient_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Error", "Please select a patient to update.")
+            return
+
+        patient_id = int(self.patient_table.item(row, 0).text())
+        first_name = self.first_name_input.text().strip()
+        last_name = self.last_name_input.text().strip()
+        age = self.age_input.text().strip()
+        gender = self.gender_combo.currentText()
+        contact = self.contact_input.text().strip()
+        medical_history = self.medical_history_input.toPlainText().strip()
+
+        self.first_name_input.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #4CAF50;
+            }
+        """)
+        self.last_name_input.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #4CAF50;
+            }
+        """)
+        self.age_input.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #4CAF50;
+            }
+        """)
+        self.contact_input.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #4CAF50;
+            }
+        """)
+
+        is_valid, error = is_valid_name(first_name)
+        if not is_valid:
+            self.first_name_input.setStyleSheet("""
+                QLineEdit {
+                    padding: 8px;
+                    border: 1px solid red;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }
+            """)
+            QMessageBox.warning(self, "Error", error)
+            return
+
+        is_valid, error = is_valid_name(last_name)
+        if not is_valid:
+            self.last_name_input.setStyleSheet("""
+                QLineEdit {
+                    padding: 8px;
+                    border: 1px solid red;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }
+            """)
+            QMessageBox.warning(self, "Error", error)
+            return
+
+        if not age:
+            self.age_input.setStyleSheet("""
+                QLineEdit {
+                    padding: 8px;
+                    border: 1px solid red;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }
+            """)
+            QMessageBox.warning(self, "Error", "Age is required.")
+            return
+        try:
+            age_val = int(age)
+            if age_val <= 0 or age_val > 150:
+                self.age_input.setStyleSheet("""
+                    QLineEdit {
+                        padding: 8px;
+                        border: 1px solid red;
+                        border-radius: 4px;
+                        font-size: 14px;
+                    }
+                """)
+                QMessageBox.warning(self, "Error", "Age must be between 1 and 150.")
+                return
+        except ValueError:
+            self.age_input.setStyleSheet("""
+                QLineEdit {
+                    padding: 8px;
+                    border: 1px solid red;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }
+            """)
+            QMessageBox.warning(self, "Error", "Age must be a number.")
+            return
+
+        is_valid, error = is_valid_phone(contact)
+        if not is_valid:
+            self.contact_input.setStyleSheet("""
+                QLineEdit {
+                    padding: 8px;
+                    border: 1px solid red;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }
+            """)
+            QMessageBox.warning(self, "Error", error)
+            return
+
+        self.db.update_patient(patient_id, first_name, last_name, age_val, gender, contact, medical_history)
+        QMessageBox.information(self, "Success", "Patient updated successfully.")
+        self.load_patients()
+        self.clear_form()
+
+    def delete_patient(self):
+        row = self.patient_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Error", "Please select a patient to delete.")
+            return
+
+        patient_id = int(self.patient_table.item(row, 0).text())
+        reply = QMessageBox.question(self, "Confirm Delete", "Are you sure you want to delete this patient?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.db.delete_patient(patient_id)
+            QMessageBox.information(self, "Success", "Patient deleted successfully.")
+            self.load_patients()
+            self.clear_form()
 
     def print_patient_data(self):
         row = self.patient_table.currentRow()

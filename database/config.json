@@ -1,6 +1,9 @@
 {
-    "clinic_name": "WabukoClinic",
-    "logo_path": "",
+    "clinic_name": "WabukoWabukoClinic",
+    "logo_path": "/home/wabukowabuko/Desktop/all/MicroClinicPlusPharmacyManager/assets/logo.png",
+    "background_path": "/home/wabukowabuko/Desktop/all/MicroClinicPlusPharmacyManager/assets/hospital_bg.jpg",
+    "tax_rate": 0,
+    "contact_details": "+254740750403",
     "currency_symbol": "KSh",
     "sync_enabled": true
 }

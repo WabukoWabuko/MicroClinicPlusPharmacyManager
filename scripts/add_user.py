@@ -63,5 +63,5 @@ if __name__ == "__main__":
     # Initialize database if needed
     init_database()
     # Example: Add admin user
-   add_user("admin", "password123", "admin")  # Use 'admin2' to avoid conflict with schema.sql's default admin
+    add_user("admin", "password123", "admin")  # Use 'admin2' to avoid conflict with schema.sql's default admin
     #add_user("staff1", "password123", "staff")

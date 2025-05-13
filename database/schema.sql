@@ -78,6 +78,7 @@ CREATE TABLE prescriptions (
     duration TEXT NOT NULL,
     quantity_prescribed INTEGER NOT NULL CHECK (quantity_prescribed > 0),
     prescription_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_synced INTEGER DEFAULT 0,
     sync_status TEXT DEFAULT 'pending',
     FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE,

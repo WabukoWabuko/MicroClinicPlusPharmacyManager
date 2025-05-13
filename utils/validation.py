@@ -17,8 +17,8 @@ def is_valid_phone(phone):
     if not re.match(r'^\+\d{1,3}\d{9}$', phone):
         return False, "Phone number must start with a country code (e.g., +254) followed by exactly 9 digits (total 12 characters including +)."
     # Verify total length is exactly 12 characters
-    if len(phone) != 12:
-        return False, "Phone number must be exactly 12 characters including the country code (e.g., +254700123456)."
+    if len(phone) != 13:
+        return False, "Phone number must be exactly 13 characters including the country code (e.g., +254700123456)."
     return True, ""
 
 def is_valid_date(date_str):
