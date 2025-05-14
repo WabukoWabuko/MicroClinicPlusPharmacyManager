@@ -418,7 +418,7 @@ class SettingsWidget(QWidget):
             self.db.sync_data()
             self.status_label.setText(self.get_sync_status())
             self.update_sync_table()
-            QMessageBox.information(self, "Sync", "Manual sync completed successfully at 02:54 PM EAT on Tuesday, May 13, 2025.")
+            QMessageBox.information(self, "Sync", "Manual sync completed successfully at 12:57 PM EAT on Wednesday, May 14, 2025.")
         except sqlite3.IntegrityError as e:
             self.status_label.setText(f"Sync failed: {str(e)}")
             self.update_sync_table()
@@ -436,6 +436,10 @@ class SettingsWidget(QWidget):
         is_admin = self.main_window.current_user and self.main_window.current_user.get('role') == 'admin'
         if not is_admin and not self.sync_toggle.isChecked() == self.db.sync_enabled:
             QMessageBox.warning(self, "Access Denied", "Only admin can modify settings except sync toggle.")
+            return
+
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
             return
 
         config = self.db.load_config()
@@ -496,7 +500,7 @@ class SettingsWidget(QWidget):
         
         self.status_label.setText(self.get_sync_status())
         self.update_sync_table()
-        QMessageBox.information(self, "Settings", "Settings saved successfully at 02:54 PM EAT on Tuesday, May 13, 2025.")
+        QMessageBox.information(self, "Settings", "Settings saved successfully at 12:57 PM EAT on Wednesday, May 14, 2025.")
 
     def update_sync_table(self):
         """Update the sync history table."""
@@ -514,12 +518,16 @@ class SettingsWidget(QWidget):
 
     def import_data(self):
         """Import data from a backup file."""
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         file_path, _ = QFileDialog.getOpenFileName(self, "Import Data", "", "Database Files (*.db)")
         if file_path and os.path.exists(file_path):
             try:
                 db_path = self.db.db_path
                 shutil.copy2(file_path, db_path)
-                QMessageBox.information(self, "Import", "Data imported successfully. Restart application to apply changes.")
+                QMessageBox.information(self, "Import", "Data imported successfully. Restart application to apply changes at 12:57 PM EAT on Wednesday, May 14, 2025.")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to import data: {str(e)}")
         else:
@@ -527,11 +535,15 @@ class SettingsWidget(QWidget):
 
     def export_data(self):
         """Export data to a backup file."""
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         file_path, _ = QFileDialog.getSaveFileName(self, "Export Data", f"backup_{self.db.get_current_date()}.db", "Database Files (*.db)")
         if file_path:
             try:
                 db_path = self.db.db_path
                 shutil.copy2(db_path, file_path)
-                QMessageBox.information(self, "Export", "Data exported successfully.")
+                QMessageBox.information(self, "Export", "Data exported successfully at 12:57 PM EAT on Wednesday, May 14, 2025.")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to export data: {str(e)}")
