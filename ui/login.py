@@ -104,6 +104,7 @@ class LoginWidget(QWidget):
         activation_label.setStyleSheet("font-size: 16px; color: #FFFFFF; padding: 5px;")
         self.activation_input = QLineEdit()
         self.activation_input.setPlaceholderText("Enter activation code")
+        self.activation_input.setEchoMode(QLineEdit.EchoMode.Password)  # Conceal with asterisks
         self.activation_input.setToolTip("Enter the activation code to unlock the system")
         self.activation_input.setStyleSheet("""
             QLineEdit {
@@ -248,7 +249,6 @@ class LoginWidget(QWidget):
                         msg.setWindowTitle("Demo Period Warning")
                         msg.setText(f"Demo period active. {days} days and {hours} hours remaining.")
                         msg.setIcon(QMessageBox.Icon.Warning)  # Set warning icon
-                        # Customize the style to have a gray background, white text, red warning icon, and styled close button
                         msg.setStyleSheet("""
                             QMessageBox {
                                 background-color: #808080;  /* Gray background */
@@ -296,11 +296,10 @@ class LoginWidget(QWidget):
     def login(self):
         # Check demo period and activation status
         if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
-            # Show caution message for 5 seconds
             msg = QMessageBox(self)
             msg.setWindowTitle("Demo Expired")
             msg.setText("The demo period has expired. Please enter the activation code to continue.")
-            msg.setIcon(QMessageBox.Icon.Critical)  # Set critical icon for expiration
+            msg.setIcon(QMessageBox.Icon.Critical)
             msg.setStyleSheet("""
                 QMessageBox {
                     background-color: #F44336;  /* Red background for critical */
@@ -323,9 +322,9 @@ class LoginWidget(QWidget):
                     background-color: #CC0000;  /* Darker red when pressed */
                 }
             """)
-            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)
             msg.show()
-            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
+            QTimer.singleShot(5000, msg.close)
             return
 
         username = self.username_input.text().strip()
@@ -357,9 +356,9 @@ class LoginWidget(QWidget):
                     background-color: #CC0000;  /* Darker red when pressed */
                 }
             """)
-            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)
             msg.show()
-            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
+            QTimer.singleShot(5000, msg.close)
             return
 
         user = self.main_window.db.authenticate_user(username, password)
@@ -393,9 +392,9 @@ class LoginWidget(QWidget):
                     background-color: #CC0000;  /* Darker red when pressed */
                 }
             """)
-            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)
             msg.show()
-            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
+            QTimer.singleShot(5000, msg.close)
             self.clear_fields()
 
     def clear_fields(self):
@@ -433,9 +432,9 @@ class LoginWidget(QWidget):
                     background-color: #CC0000;  /* Darker red when pressed */
                 }
             """)
-            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)
             msg.show()
-            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
+            QTimer.singleShot(5000, msg.close)
             return
 
         if self.main_window.db.activate_system(code):
@@ -465,9 +464,9 @@ class LoginWidget(QWidget):
                     background-color: #CC0000;  /* Darker red when pressed */
                 }
             """)
-            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)
             msg.show()
-            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
+            QTimer.singleShot(5000, msg.close)
             # Remove activation input and button
             for i in reversed(range(self.activation_layout.count())):
                 self.activation_layout.itemAt(i).widget().setParent(None)
@@ -500,7 +499,7 @@ class LoginWidget(QWidget):
                     background-color: #CC0000;  /* Darker red when pressed */
                 }
             """)
-            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)
             msg.show()
-            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
+            QTimer.singleShot(5000, msg.close)
             self.clear_fields()

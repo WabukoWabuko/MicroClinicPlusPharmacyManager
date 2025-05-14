@@ -98,7 +98,7 @@ class Database:
                     config = json.load(f)
                     default_config.update(config)
 
-            # Load from config table
+            # Load from config table (prioritize database over JSON for critical keys)
             conn = self.connect()
             cursor = conn.cursor()
             cursor.execute("SELECT key, value FROM config")
@@ -915,11 +915,17 @@ class Database:
         first_launch_str = config.get("first_launch_date")
         if not first_launch_str:
             return True  # If no launch date, assume demo is active
-        first_launch = datetime.strptime(first_launch_str, "%Y-%m-%d %H:%M:%S")
-        first_launch = pytz.timezone('Africa/Nairobi').localize(first_launch)
-        current_time = datetime.now(pytz.timezone('Africa/Nairobi'))
-        demo_duration = timedelta(days=7)
-        return (current_time - first_launch) <= demo_duration
+        try:
+            first_launch = datetime.strptime(first_launch_str, "%Y-%m-%d %H:%M:%S")
+            first_launch = pytz.timezone('Africa/Nairobi').localize(first_launch)
+            current_time = datetime.now(pytz.timezone('Africa/Nairobi'))
+            demo_duration = timedelta(days=7)
+            # Debugging output (uncomment to enable)
+            # print(f"First Launch: {first_launch}, Current Time: {current_time}, Demo End: {first_launch + demo_duration}, Difference: {current_time - first_launch}")
+            return (current_time - first_launch) <= demo_duration
+        except ValueError as e:
+            print(f"Error parsing first_launch_date ({first_launch_str}): {e}")
+            return True  # Fallback to active if parsing fails
 
     def is_system_activated(self):
         """Check if the system has been activated."""
