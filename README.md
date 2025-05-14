@@ -50,7 +50,7 @@ graph TD
     E --> H[📝 Prescription Logging]
     E --> I[💰 Sales Management]
     E --> J[🚚 Supplier Management]
-    E --> K{{🛡️ User Management<br>(Admin Only)}}
+    E --> K{{🛡️ User Management\n(Admin Only)}}
     E --> L[⚙️ Settings]
     E --> M[📊 Reporting Dashboard]
 
