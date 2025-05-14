@@ -37,7 +37,7 @@ MicroClinic Plus Pharmacy Manager is a desktop application built with PyQt6 to m
 3. Navigate the menu to access different modules.
 
 ## Project Structure
-```mermaid
+```
 graph TD
     A[💊 MicroClinic Plus: Pharmacy Manager] --> B[🪟 Main Window]
     A --> C[🗄️ Database Layer]
