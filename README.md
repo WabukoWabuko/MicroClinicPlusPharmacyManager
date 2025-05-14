@@ -39,21 +39,24 @@ MicroClinic Plus Pharmacy Manager is a desktop application built with PyQt6 to m
 ## Project Structure
 ```mermaid
 graph TD
-    A[MicroClinic Plus Pharmacy Manager] --> B(MainWindow)
-    A --> C(Database)
-    B --> D[LoginWidget]
-    B --> E[Menu]
-    E --> F[PatientManagementWidget]
-    E --> G[InventoryManagementWidget]
-    E --> H[PrescriptionLoggingWidget]
-    E --> I[SalesManagementWidget]
-    E --> J[SupplierManagementWidget]
-    E --> K{UserManagementWidget<br>(Admin Only)}
-    E --> L[SettingsWidget]
-    E --> M[ReportingDashboardWidget]
-    C --> N[authenticate_user]
-    C --> O[load_config]
-    C --> P[is_online]
+    A[💊 MicroClinic Plus: Pharmacy Manager] --> B[🪟 Main Window]
+    A --> C[🗄️ Database Layer]
+    
+    B --> D[🔐 Login Widget]
+    B --> E[📂 Main Menu]
+
+    E --> F[🧑‍⚕️ Patient Management]
+    E --> G[📦 Inventory Management]
+    E --> H[📝 Prescription Logging]
+    E --> I[💰 Sales Management]
+    E --> J[🚚 Supplier Management]
+    E --> K{{🛡️ User Management<br>(Admin Only)}}
+    E --> L[⚙️ Settings]
+    E --> M[📊 Reporting Dashboard]
+
+    C --> N[🔑 Authenticate User]
+    C --> O[📁 Load Config]
+    C --> P[🌐 Check Connectivity]
 ```
 
 ## Contributing
