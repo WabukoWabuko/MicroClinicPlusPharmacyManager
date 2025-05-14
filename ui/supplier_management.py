@@ -294,6 +294,10 @@ class SupplierManagementWidget(QWidget):
         self.notes_input.setText(supplier['notes'])
 
     def add_supplier(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         name = self.name_input.text().strip()
         phone = self.phone_input.text().strip()
         email = self.email_input.text().strip()
@@ -325,13 +329,17 @@ class SupplierManagementWidget(QWidget):
                 responsible_person=responsible_person,
                 notes=notes
             )
-            QMessageBox.information(self, "Success", "Supplier added successfully.")
+            QMessageBox.information(self, "Success", "Supplier added successfully at 12:42 PM EAT on Wednesday, May 14, 2025.")
             self.load_data()
             self.clear_form()
         except ValueError as e:
             QMessageBox.warning(self, "Error", str(e))
 
     def update_supplier(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         if not self.selected_supplier_id:
             QMessageBox.warning(self, "Error", "Please select a supplier to update.")
             return
@@ -368,7 +376,7 @@ class SupplierManagementWidget(QWidget):
                 responsible_person=responsible_person,
                 notes=notes
             )
-            QMessageBox.information(self, "Success", "Supplier updated successfully.")
+            QMessageBox.information(self, "Success", "Supplier updated successfully at 12:42 PM EAT on Wednesday, May 14, 2025.")
             self.load_data()
             self.clear_form()
         except ValueError as e:
