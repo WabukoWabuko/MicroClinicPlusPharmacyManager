@@ -1,188 +1,380 @@
-<!DOCTYPE html>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Clinic Manage</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body {
-      padding: 2rem;
-      background-color: #f8f9fa;
-    }
-    .prompt-card {
-      margin-bottom: 1.5rem;
-    }
-    pre {
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MicroClinic Plus Pharmacy Manager - The ultimate pharmacy management solution with seamless workflows, real-time insights, and unmatched user experience.">
+    <title>MicroClinic Plus Pharmacy Manager - Transform Your Pharmacy Today</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+        body {
+            background-color: #f8fafc;
+            color: #1a202c;
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #4CAF50 0%, #1E7D32 100%);
+            color: #fff;
+            text-align: center;
+            padding: 100px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://source.unsplash.com/1600x900/?pharmacy,healthcare') no-repeat center center/cover;
+            opacity: 0.2;
+            z-index: 0;
+        }
+        header h1 {
+            font-size: 56px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+        header p {
+            font-size: 24px;
+            font-weight: 300;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #fff;
+            color: #4CAF50;
+            font-weight: 600;
+            padding: 15px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+        .cta-button:hover {
+            background-color: #4CAF50;
+            color: #fff;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        section {
+            padding: 60px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h2 {
+            font-size: 40px;
+            font-weight: 600;
+            color: #1a202c;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .features, .benefits, .screenshots, .testimonials, .customize, .contact {
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            margin-bottom: 40px;
+            padding: 40px;
+        }
+        .features-grid, .benefits-grid, .screenshots-grid, .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        .feature-card, .benefit-card, .screenshot-card, .testimonial-card {
+            background: #f9fafb;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .feature-card:hover, .benefit-card:hover, .screenshot-card:hover, .testimonial-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .feature-card h3, .benefit-card h3 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #4CAF50;
+            margin-bottom: 15px;
+        }
+        .feature-card p, .benefit-card p {
+            font-size: 16px;
+            color: #4a5568;
+        }
+        .screenshots-grid {
+            gap: 20px;
+        }
+        .screenshot-card img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .screenshot-card p {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        .testimonial-card {
+            position: relative;
+            padding: 30px;
+        }
+        .testimonial-card::before {
+            content: '“';
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 40px;
+            color: #4CAF50;
+            opacity: 0.2;
+        }
+        .testimonial-card p {
+            font-size: 16px;
+            font-style: italic;
+            color: #4a5568;
+        }
+        .testimonial-card h4 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-top: 15px;
+        }
+        .customize p, .contact p {
+            font-size: 18px;
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 20px;
+        }
+        .contact form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .contact input, .contact textarea {
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        .contact input:focus, .contact textarea:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        .contact button {
+            background-color: #4CAF50;
+            color: #fff;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .contact button:hover {
+            background-color: #2E7D32;
+            transform: translateY(-2px);
+        }
+        footer {
+            background: #1a202c;
+            color: #e2e8f0;
+            text-align: center;
+            padding: 30px;
+            font-size: 16px;
+        }
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 40px;
+            }
+            header p {
+                font-size: 20px;
+            }
+            h2 {
+                font-size: 32px;
+            }
+            .features-grid, .benefits-grid, .screenshots-grid, .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1 class="mb-4">🧠 Micro-Clinic Manager</h1>
+    <header>
+        <h1>MicroClinic Plus Pharmacy Manager</h1>
+        <p>Revolutionize Your Pharmacy Operations with Unmatched Efficiency and Elegance</p>
+        <a href="#contact" class="cta-button">Discover the Future of Pharmacy Management</a>
+    </header>
 
-    <!-- Function to render a prompt -->
-    <script>
-      const prompts = [
-        {
-          title: "1. Project Overview",
-          prompt: `I'm building a desktop Micro-Clinic & Pharmacy Management System using Python and PyQt6. It should be installable on a local PC, work fully offline using SQLite, and have an optional online sync feature using Firebase or Supabase.
-
-Core modules:
-- Patient management
-- Prescription logging
-- Drug inventory
-- Sales & receipts
-- Reports (daily/weekly/monthly)
-- Optional cloud sync
-
-Let's start by designing the database schema.`
-        },
-        {
-          title: "2. Database Schema",
-          prompt: `Design a normalized SQLite database schema for this system. Include:
-- Patients
-- Prescriptions
-- Inventory (drugs)
-- Sales
-- Users (optional for login)
-- Config/Settings
-
-Use appropriate foreign keys and timestamps.`
-        },
-        {
-          title: "3. Patient Management UI",
-          prompt: `Create a PyQt6 UI form for registering and viewing patients. Fields:
-- Full Name
-- Age
-- Gender
-- Contact
-- Medical history
-- Date of registration
-
-Include Save, Clear, and View All buttons. Store into the SQLite DB.`
-        },
-        {
-          title: "4. Prescription Logging UI",
-          prompt: `Build a PyQt6 UI for logging prescriptions. Allow user to:
-- Select patient from dropdown
-- Input drug name, dosage, frequency, duration, and notes
-- Date of prescription
-
-Save to prescriptions table. Also allow viewing prescription history per patient.`
-        },
-        {
-          title: "5. Inventory Management",
-          prompt: `Design a PyQt6 interface to:
-- Add new drug: name, quantity, batch number, expiry date, price
-- View current inventory in a table
-- Show alert (in red) for drugs expiring in 30 days or less
-- Edit/delete entries
-
-Connect to SQLite DB.`
-        },
-        {
-          title: "6. Sales & Receipts",
-          prompt: `Create a PyQt6 sales form that allows:
-- Selecting multiple drugs from inventory
-- Enter quantity for each
-- Auto calculate total price
-- Save sale to DB and reduce inventory quantity
-- Generate a printable PDF receipt using FPDF or ReportLab
-
-Include timestamp, patient (optional), and unique receipt ID.`
-        },
-        {
-          title: "7. Reports Module",
-          prompt: `Build a reporting module with a date filter. Show:
-- Total sales per day/week/month
-- Most prescribed drugs
-- Drugs low in stock
-- Export as PDF or Excel
-
-Use PyQt6 UI and connect to SQLite DB.`
-        },
-        {
-          title: "8. Login System (Optional)",
-          prompt: `Add a login screen using PyQt6. Users stored in 'users' table with hashed passwords (bcrypt or hashlib). Allow login and logout. Role-based access optional.`
-        },
-        {
-          title: "9. Online Sync System",
-          prompt: `Implement optional cloud sync using Supabase or Firebase. Allow syncing:
-- Patient data
-- Prescriptions
-- Inventory
-- Sales
-
-Use a sync toggle in Settings. Handle offline gracefully and sync only when internet is available.`
-        },
-        {
-          title: "10. Settings Module",
-          prompt: `Add a settings screen for:
-- Clinic name
-- Logo (for receipts)
-- Currency symbol
-- Online sync toggle
-
-Save locally in a config table or JSON file. Auto-load on app startup.`
-        },
-        {
-          title: "11. Packaging",
-          prompt: `Show me how to package this PyQt6 project using pyinstaller. Bundle the SQLite DB, assets (icons, logos), and ensure it's a standalone .exe or .AppImage that runs without terminal.`
-        },
-        {
-          title: "12. Seed Test Data",
-          prompt: `Write a Python script to seed the database with mock data (patients, prescriptions, inventory, sales) for local testing.`
-        },
-        {
-          title: "13. Receipt Generator",
-          prompt: `Create a function using ReportLab to generate a PDF receipt:
-- Clinic name + logo
-- Patient name + contact
-- List of drugs with prices
-- Total amount
-- Date/time
-- Footer with thank you message
-
-Style it professionally.`
-        },
-        {
-          title: "14. Input Validation",
-          prompt: `Add basic validation to all forms:
-- No empty name or quantity
-- Valid phone number
-- Quantity must be positive number
-- Show errors via PyQt6 QMessageBox`
-        },
-        {
-          title: "15. Sales Strategy",
-          prompt: `Give me a local sales plan for Nairobi. Include:
-- Ideal pricing for small clinics (KES range)
-- How to market on WhatsApp/Facebook groups
-- How to offer a free trial/demo
-- What to include in a flyer or landing page`
-        }
-      ];
-
-      window.onload = function () {
-        const container = document.querySelector('.container');
-
-        prompts.forEach((item, index) => {
-          const card = document.createElement('div');
-          card.className = "card prompt-card";
-          card.innerHTML = `
-            <div class="card-body">
-              <h5 class="card-title">${item.title}</h5>
-              <pre class="card-text">${item.prompt}</pre>
+    <section class="features">
+        <h2>Powerful Features to Elevate Your Pharmacy</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>All-in-One Management</h3>
+                <p>Seamlessly manage patients, inventory, prescriptions, sales, and suppliers in one intuitive platform, reducing workload and boosting productivity.</p>
             </div>
-          `;
-          container.appendChild(card);
-        });
-      };
-    </script>
-  </div>
+            <div class="feature-card">
+                <h3>Real-Time Connectivity</h3>
+                <p>Stay informed with automatic online/offline status updates every 5 seconds, ensuring you’re always in control, even during connectivity issues.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Accessibility at Its Best</h3>
+                <p>Toggle high-contrast mode for enhanced visibility, making the app accessible to all users, including those with visual impairments.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Inspirational Experience</h3>
+                <p>Engage with dynamic health quotes on the login page, refreshing every minute to inspire and motivate your team.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="benefits">
+        <h2>Why MicroClinic Plus Stands Out</h2>
+        <div class="benefits-grid">
+            <div class="benefit-card">
+                <h3>Boost Efficiency</h3>
+                <p>Automate repetitive tasks, streamline workflows, and reduce errors, allowing your team to focus on patient care rather than paperwork.</p>
+            </div>
+            <div class="benefit-card">
+                <h3>Secure & Reliable</h3>
+                <p>Built with robust security measures, including encrypted user authentication, to protect sensitive data and ensure compliance with healthcare standards.</p>
+            </div>
+            <div class="benefit-card">
+                <h3>Insightful Reporting</h3>
+                <p>Access a comprehensive reporting dashboard to gain actionable insights into sales trends, inventory levels, and patient history, empowering data-driven decisions.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="screenshots">
+        <h2>Experience the Elegance</h2>
+        <div class="screenshots-grid">
+            <div class="screenshot-card">
+                <img src="screenshots/login.png" alt="Login Page Screenshot">
+                <p>A beautifully centered login page with dynamic health quotes refreshing every minute to inspire your team.</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/menu.png" alt="Menu Page Screenshot">
+                <p>Intuitive 4x2 grid menu layout offering effortless navigation across all pharmacy modules.</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/patient.png" alt="Patient Management Screenshot">
+                <p>Efficient patient management module for quick record-keeping and updates with a user-friendly interface.</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/report.png" alt="Reporting Dashboard Screenshot">
+                <p>Insightful reporting dashboard visualizing key metrics like sales trends and inventory levels at a glance.</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/inventory.png" alt="Inventory Management Screenshot">
+                <p>Robust inventory management module to track stock, prices, and expiry dates with real-time accuracy.</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/supplier.png" alt="Supplier Management Screenshot">
+                <p>Streamlined supplier management module for maintaining contact details and order coordination.</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/sales.png" alt="Sales Management Screenshot">
+                <p>Dynamic sales management module to process transactions and monitor revenue with ease.</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/user_management.png" alt="User Management Screenshot">
+                <p>Secure user management module (admin-only) for adding, editing, and managing staff roles.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="testimonials">
+        <h2>What Our Users Say</h2>
+        <div class="testimonials-grid">
+            <div class="testimonial-card">
+                <p>MicroClinic Plus transformed our pharmacy operations overnight. The real-time status updates and intuitive design saved us countless hours!</p>
+                <h4>Dr. Damaris Katsutsu, Medic</h4>
+            </div>
+            <div class="testimonial-card">
+                <p>The accessibility features are a game-changer. My team loves the high-contrast mode, and the dynamic quotes keep us motivated.</p>
+                <h4>Adams Phil, Pharmacist</h4>
+            </div>
+            <div class="testimonial-card">
+                <p>The reporting dashboard gives us insights we never had before. It’s like having a business analyst built into the app!</p>
+                <h4>Wabuko Wabuko, Developer</h4>
+            </div>
+        </div>
+    </section>
+
+    <section class="customize">
+        <h2>Need Adjustments? We’ve Got You Covered!</h2>
+        <p>Every pharmacy is unique, and we’re here to make MicroClinic Plus fit your specific needs. Whether it’s custom features, additional modules, or tailored workflows, let us know how we can make this solution perfect for you.</p>
+        <a href="#contact" class="cta-button">Request Customization</a>
+    </section>
+
+    <section class="contact" id="contact">
+        <h2>Let’s Connect</h2>
+        <p>Join the countless pharmacies transforming their operations with MicroClinic Plus. Contact us today to learn more or request a tailored solution!</p>
+        <form action="mailto:basilwabbs@gmail.com" method="post" enctype="text/plain">
+            <input type="text" name="name" placeholder="Wabuko" required>
+            <input type="email" name="email" placeholder="basilwabbs@gmail.com" required>
+            <textarea name="message" rows="6" placeholder="Tell us about your needs or inquiries..." required></textarea>
+            <button type="submit">Send Message</button>
+        </form>
+    </section>
+
+    <footer>
+        <p>© 2025 MicroClinic Plus Pharmacy Manager. Crafted with Excellence for the Future of Healthcare.</p>
+    </footer>
 </body>
 </html>
-
