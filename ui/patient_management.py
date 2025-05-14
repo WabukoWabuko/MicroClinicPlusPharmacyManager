@@ -301,6 +301,10 @@ class PatientManagementWidget(QWidget):
             self.medical_history_input.setText(self.patient_table.item(row, 6).text() if self.patient_table.item(row, 6).text() != "N/A" else "")
 
     def add_patient(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         first_name = self.first_name_input.text().strip()
         last_name = self.last_name_input.text().strip()
         age = self.age_input.text().strip()
@@ -429,11 +433,15 @@ class PatientManagementWidget(QWidget):
             return
 
         self.db.add_patient(first_name, last_name, age_val, gender, contact, medical_history)
-        QMessageBox.information(self, "Success", "Patient added successfully at 03:14 PM EAT on Tuesday, May 13, 2025.")
+        QMessageBox.information(self, "Success", "Patient added successfully at 11:57 AM EAT on Wednesday, May 14, 2025.")
         self.load_patients()
         self.clear_form()
 
     def update_patient(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         row = self.patient_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Error", "Please select a patient to update.")
@@ -568,11 +576,15 @@ class PatientManagementWidget(QWidget):
             return
 
         self.db.update_patient(patient_id, first_name, last_name, age_val, gender, contact, medical_history)
-        QMessageBox.information(self, "Success", "Patient updated successfully at 03:14 PM EAT on Tuesday, May 13, 2025.")
+        QMessageBox.information(self, "Success", "Patient updated successfully at 11:57 AM EAT on Wednesday, May 14, 2025.")
         self.load_patients()
         self.clear_form()
 
     def delete_patient(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         row = self.patient_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Error", "Please select a patient to delete.")
@@ -583,7 +595,7 @@ class PatientManagementWidget(QWidget):
                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             self.db.delete_patient(patient_id)
-            QMessageBox.information(self, "Success", "Patient deleted successfully at 03:14 PM EAT on Tuesday, May 13, 2025.")
+            QMessageBox.information(self, "Success", "Patient deleted successfully at 11:57 AM EAT on Wednesday, May 14, 2025.")
             self.load_patients()
             self.clear_form()
 
@@ -691,7 +703,7 @@ class PatientManagementWidget(QWidget):
         elements.append(Spacer(1, 4))
 
         doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-        QMessageBox.information(self, "Success", f"Patient data saved to:\n{file_path} at 03:14 PM EAT on Tuesday, May 13, 2025.")
+        QMessageBox.information(self, "Success", f"Patient data saved to:\n{file_path} at 11:57 AM EAT on Wednesday, May 14, 2025.")
 
     def clear_form(self):
         self.first_name_input.clear()
