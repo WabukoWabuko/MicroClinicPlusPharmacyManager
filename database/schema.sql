@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS patients;
 DROP TABLE IF EXISTS suppliers;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS sync_queue;
+DROP TABLE IF EXISTS config;
 
 -- Users table: Stores admin and staff accounts
 CREATE TABLE users (
@@ -158,6 +159,16 @@ CREATE TABLE sync_queue (
     CONSTRAINT created_at_format CHECK (created_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]')
 );
 
+-- Config table: Stores application configuration settings
+CREATE TABLE config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT NOT NULL UNIQUE,
+    value TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT key_not_empty CHECK (TRIM(key) != ''),
+    CONSTRAINT created_at_format CHECK (created_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]')
+);
+
 -- Indexes for performance
 CREATE INDEX idx_patients_contact ON patients(contact);
 CREATE INDEX idx_patients_name ON patients(first_name, last_name);
@@ -176,3 +187,4 @@ CREATE INDEX idx_sale_items_sale_id ON sale_items(sale_id);
 CREATE INDEX idx_sale_items_updated_at ON sale_items(updated_at);
 CREATE INDEX idx_sync_queue_status ON sync_queue(status);
 CREATE INDEX idx_sync_queue_created_at ON sync_queue(created_at);
+CREATE INDEX idx_config_key ON config(key);

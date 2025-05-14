@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS drugs;
 DROP TABLE IF EXISTS patients;
 DROP TABLE IF EXISTS suppliers;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS config;
 
 -- Users table: Stores admin and staff accounts
 CREATE TABLE users (
@@ -144,6 +145,15 @@ CREATE TABLE sync_queue (
     CONSTRAINT data_is_jsonb CHECK (data IS NULL OR jsonb_typeof(data) IS NOT NULL)
 );
 
+-- Config table: Stores application configuration settings
+CREATE TABLE config (
+    id SERIAL PRIMARY KEY,
+    key TEXT NOT NULL UNIQUE,
+    value TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT key_not_empty CHECK (TRIM(key) != '')
+);
+
 -- Indexes for performance
 CREATE INDEX idx_patients_contact ON patients(contact);
 CREATE INDEX idx_patients_name ON patients(first_name, last_name);
@@ -162,3 +172,4 @@ CREATE INDEX idx_sale_items_sale_id ON sale_items(sale_id);
 CREATE INDEX idx_sale_items_updated_at ON sale_items(updated_at);
 CREATE INDEX idx_sync_queue_status ON sync_queue(status);
 CREATE INDEX idx_sync_queue_created_at ON sync_queue(created_at);
+CREATE INDEX idx_config_key ON config(key);
