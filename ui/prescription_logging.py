@@ -323,6 +323,10 @@ class PrescriptionLoggingWidget(QWidget):
             self.quantity_input.setText(str(prescription['quantity_prescribed']))
 
     def add_prescription(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         patient_id = self.patient_search_combo.currentData()
         drug_id = self.drug_search_combo.currentData()
         diagnosis = self.diagnosis_input.toPlainText().strip()
@@ -374,13 +378,17 @@ class PrescriptionLoggingWidget(QWidget):
                 duration=duration,
                 quantity_prescribed=quantity_val
             )
-            QMessageBox.information(self, "Success", "Prescription added successfully.")
+            QMessageBox.information(self, "Success", "Prescription added successfully at 12:13 PM EAT on Wednesday, May 14, 2025.")
             self.load_data()
             self.clear_form()
         except ValueError as e:
             QMessageBox.warning(self, "Error", str(e))
 
     def update_prescription(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         row = self.prescription_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Error", "Please select a prescription to update.")
@@ -439,13 +447,17 @@ class PrescriptionLoggingWidget(QWidget):
                 duration=duration,
                 quantity_prescribed=quantity_val
             )
-            QMessageBox.information(self, "Success", "Prescription updated successfully.")
+            QMessageBox.information(self, "Success", "Prescription updated successfully at 12:13 PM EAT on Wednesday, May 14, 2025.")
             self.load_data()
             self.clear_form()
         except ValueError as e:
             QMessageBox.warning(self, "Error", str(e))
 
     def delete_prescription(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         row = self.prescription_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Error", "Please select a prescription to delete.")
@@ -456,7 +468,7 @@ class PrescriptionLoggingWidget(QWidget):
                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             self.db.delete_prescription(prescription_id)
-            QMessageBox.information(self, "Success", "Prescription deleted successfully.")
+            QMessageBox.information(self, "Success", "Prescription deleted successfully at 12:13 PM EAT on Wednesday, May 14, 2025.")
             self.load_data()
             self.clear_form()
 
