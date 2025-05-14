@@ -306,6 +306,10 @@ class SalesManagementWidget(QWidget):
             self.sales_table.setItem(row, 3, QTableWidgetItem(sale['sale_date']))
 
     def add_sale_item(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         drug_id = self.drug_search_combo.currentData()
         quantity = self.quantity_input.text().strip()
         selected_currency = self.currency_combo.currentText()
@@ -369,6 +373,10 @@ class SalesManagementWidget(QWidget):
         self.quantity_input.clear()
 
     def clear_sale_items(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         # Restore stock for each item in the sale_items list
         for item in self.sale_items:
             drug_id = item['drug_id']
@@ -384,6 +392,10 @@ class SalesManagementWidget(QWidget):
         self.quantity_input.clear()
 
     def complete_sale(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         patient_id = self.patient_search_combo.currentData()
         if not patient_id or self.patient_search_combo.currentText() == "Select Patient":
             QMessageBox.warning(self, "Error", "Please select a patient.")
@@ -411,7 +423,7 @@ class SalesManagementWidget(QWidget):
                 price=item['price']  # Store in KSh
             )
 
-        QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id}")
+        QMessageBox.information(self, "Success", f"Sale completed successfully. Sale ID: {sale_id} at 12:27 PM EAT on Wednesday, May 14, 2025.")
         self.load_data()  # Update the sales table
         self.sale_items = []  # Clear sale_items without restoring stock
         self.sale_items_table.setRowCount(0)
@@ -502,7 +514,7 @@ class SalesManagementWidget(QWidget):
         if 'dob' in patient and patient['dob'] and patient['dob'] != 'N/A':
             try:
                 dob = datetime.strptime(patient['dob'], '%Y-%m-%d')
-                today = datetime(2025, 5, 13)  # Current date as of May 13, 2025
+                today = datetime(2025, 5, 14)  # Updated to current date
                 patient_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
             except ValueError:
                 patient_age = patient.get('age', 'N/A')
@@ -613,4 +625,4 @@ class SalesManagementWidget(QWidget):
                     canvas.drawImage('assets/logo.png', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
 
         doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-        QMessageBox.information(self, "Success", f"Receipt saved to:\n{file_path}")
+        QMessageBox.information(self, "Success", f"Receipt saved to:\n{file_path} at 12:27 PM EAT on Wednesday, May 14, 2025.")
