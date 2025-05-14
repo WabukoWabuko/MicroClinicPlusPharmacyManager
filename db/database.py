@@ -66,11 +66,19 @@ class Database:
                 sync_status TEXT DEFAULT 'pending'
             )
         """)
+        # Insert initial config values for demo period and activation
+        current_time = datetime.now(pytz.timezone('Africa/Nairobi')).strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute("INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)",
+                     ("first_launch_date", current_time))
+        conn.execute("INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)",
+                     ("activation_code", "ACTIVATE2025"))
+        conn.execute("INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)",
+                     ("is_activated", "false"))
         conn.commit()
         conn.close()
 
     def load_config(self):
-        """Load settings from config.json."""
+        """Load settings from config.json and database config table."""
         default_config = {
             "clinic_name": "MicroClinic",
             "logo_path": "",
@@ -78,13 +86,26 @@ class Database:
             "tax_rate": 0,
             "contact_details": "",
             "currency_symbol": "KSh",
-            "sync_enabled": False
+            "sync_enabled": False,
+            "first_launch_date": None,
+            "activation_code": None,
+            "is_activated": "false"
         }
         try:
+            # Load from config.json
             if os.path.exists(self.config_path):
                 with open(self.config_path, 'r') as f:
                     config = json.load(f)
                     default_config.update(config)
+
+            # Load from config table
+            conn = self.connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT key, value FROM config")
+            db_config = dict(cursor.fetchall())
+            conn.close()
+            default_config.update(db_config)
+
             self.sync_enabled = default_config["sync_enabled"]
             if os.path.exists("last_sync.txt"):
                 with open("last_sync.txt", "r") as f:
@@ -887,3 +908,33 @@ class Database:
         """Get the current date as a string in EAT (East Africa Time)."""
         eat_time = datetime.now(pytz.timezone('Africa/Nairobi'))
         return eat_time.strftime("%Y-%m-%d %H:%M:%S")
+
+    def is_demo_period_active(self):
+        """Check if the demo period (7 days) is still active."""
+        config = self.load_config()
+        first_launch_str = config.get("first_launch_date")
+        if not first_launch_str:
+            return True  # If no launch date, assume demo is active
+        first_launch = datetime.strptime(first_launch_str, "%Y-%m-%d %H:%M:%S")
+        first_launch = pytz.timezone('Africa/Nairobi').localize(first_launch)
+        current_time = datetime.now(pytz.timezone('Africa/Nairobi'))
+        demo_duration = timedelta(days=7)
+        return (current_time - first_launch) <= demo_duration
+
+    def is_system_activated(self):
+        """Check if the system has been activated."""
+        config = self.load_config()
+        return config.get("is_activated", "false") == "true"
+
+    def activate_system(self, code):
+        """Validate the activation code and activate the system if correct."""
+        config = self.load_config()
+        if code == config.get("activation_code"):
+            conn = self.connect()
+            cursor = conn.cursor()
+            cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+                           ("is_activated", "true"))
+            conn.commit()
+            conn.close()
+            return True
+        return False
