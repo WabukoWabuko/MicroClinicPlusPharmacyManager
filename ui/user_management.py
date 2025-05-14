@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdi
 from PyQt6.QtCore import Qt
 from db.database import Database
 import bcrypt
+import sqlite3
 
 class UserManagementWidget(QWidget):
     def __init__(self, main_window):
@@ -199,6 +200,10 @@ class UserManagementWidget(QWidget):
             self.role_combo.setCurrentText(self.user_table.item(row, 2).text())
 
     def add_user(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
         role = self.role_combo.currentText()
@@ -215,13 +220,17 @@ class UserManagementWidget(QWidget):
             salt = bcrypt.gensalt()
             password_hash = bcrypt.hashpw(password.encode('utf-8'), salt)
             self.db.add_user(username, password_hash.decode('utf-8'), role)
-            QMessageBox.information(self, "Success", "User added successfully.")
+            QMessageBox.information(self, "Success", "User added successfully at 12:52 PM EAT on Wednesday, May 14, 2025.")
             self.load_users()
             self.clear_form()
         except sqlite3.IntegrityError:
             QMessageBox.warning(self, "Error", "Username already exists.")
 
     def update_user(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         row = self.user_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Error", "Please select a user to update.")
@@ -245,13 +254,17 @@ class UserManagementWidget(QWidget):
                 existing_user = self.db.get_user_by_id(user_id)
                 password_hash = existing_user['password_hash']
             self.db.update_user(user_id, username, password_hash, role)
-            QMessageBox.information(self, "Success", "User updated successfully.")
+            QMessageBox.information(self, "Success", "User updated successfully at 12:52 PM EAT on Wednesday, May 14, 2025.")
             self.load_users()
             self.clear_form()
         except sqlite3.IntegrityError:
             QMessageBox.warning(self, "Error", "Username already exists.")
 
     def delete_user(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         row = self.user_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Error", "Please select a user to delete.")
@@ -266,7 +279,7 @@ class UserManagementWidget(QWidget):
                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             self.db.delete_user(user_id)
-            QMessageBox.information(self, "Success", "User deleted successfully.")
+            QMessageBox.information(self, "Success", "User deleted successfully at 12:52 PM EAT on Wednesday, May 14, 2025.")
             self.load_users()
             self.clear_form()
 
