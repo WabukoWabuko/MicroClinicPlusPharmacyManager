@@ -1,18 +1,27 @@
-# MicroClinic Plus Pharmacy Manager
+# 💊 MicroClinic Plus Pharmacy Manager
 
-## Overview
-MicroClinic Plus Pharmacy Manager is a desktop application built with PyQt6 to manage pharmacy operations, including patient management, inventory, prescription logging, sales, supplier management, user management, settings, and reporting. It features a user-friendly interface with login authentication, high-contrast mode, and dynamic status updates.
+![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![License](https://img.shields.io/github/license/WabukoWabuko/MicroClinicPlusPharmacyManager)
 
-## Features
-- **Login System**: Secure authentication with username and password.
-- **Modular Menu**: Navigate through various management modules (Patient, Inventory, etc.).
-- **Dynamic Status**: Real-time online/offline status check every 5 seconds.
-- **High Contrast Mode**: Toggle for accessibility.
-- **Dynamic Quotes**: Inspirational health quotes on the login page, updated every minute.
-- **Database Integration**: Persistent storage and configuration management.
+## 📋 Overview
+**MicroClinic Plus Pharmacy Manager** is a desktop application built with **PyQt6** to streamline core pharmacy operations — from patient and inventory management to sales and reporting. It features a modular interface, real-time status updates, and accessibility options.
 
-## Installation
-1. Clone the repository:
+---
+
+## 🚀 Features
+
+- 🔐 **Login System** – Secure authentication with username and password.
+- 📂 **Modular Menu** – Navigate through Patient, Inventory, Sales, and more.
+- 🌐 **Dynamic Status** – Auto-checks online/offline state every 5 seconds.
+- 🌓 **High Contrast Mode** – Toggle accessibility mode on demand.
+- 💬 **Inspirational Quotes** – Health quotes rotate every minute on login.
+- 🗄️ **Database Integration** – Persistent storage with config management.
+
+---
+
+## 🛠️ Installation
+
+1. **Clone the repo**
    ```bash
    git clone https://github.com/WabukoWabuko/MicroClinicPlusPharmacyManager.git
    cd MicroClinicPlusPharmacyManager
@@ -37,7 +46,7 @@ MicroClinic Plus Pharmacy Manager is a desktop application built with PyQt6 to m
 3. Navigate the menu to access different modules.
 
 ## Project Structure
-```
+```mermaid
 graph TD
     A[💊 MicroClinic Plus: Pharmacy Manager] --> B[🪟 Main Window]
     A --> C[🗄️ Database Layer]
