@@ -1,43 +1,4 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -197,39 +158,6 @@
             color: #4a5568;
             margin-bottom: 20px;
         }
-        .contact form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .contact input, .contact textarea {
-            padding: 15px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-        }
-        .contact input:focus, .contact textarea:focus {
-            border-color: #4CAF50;
-            outline: none;
-        }
-        .contact button {
-            background-color: #4CAF50;
-            color: #fff;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .contact button:hover {
-            background-color: #2E7D32;
-            transform: translateY(-2px);
-        }
         footer {
             background: #1a202c;
             color: #e2e8f0;
@@ -257,7 +185,7 @@
     <header>
         <h1>MicroClinic Plus Pharmacy Manager</h1>
         <p>Revolutionize Your Pharmacy Operations with Unmatched Efficiency and Elegance</p>
-        <a href="#contact" class="cta-button">Discover the Future of Pharmacy Management</a>
+        <a href="https://yourportfolio.com/contact" class="cta-button">Explore More on My Portfolio</a>
     </header>
 
     <section class="features">
@@ -312,23 +240,23 @@
                 <p>Intuitive 4x2 grid menu layout offering effortless navigation across all pharmacy modules.</p>
             </div>
             <div class="screenshot-card">
-                <img src="screenshots/patient.png" alt="Patient Management Screenshot">
+                <img src="screenshots/patient_management.png" alt="Patient Management Screenshot">
                 <p>Efficient patient management module for quick record-keeping and updates with a user-friendly interface.</p>
             </div>
             <div class="screenshot-card">
-                <img src="screenshots/report.png" alt="Reporting Dashboard Screenshot">
+                <img src="screenshots/reporting_dashboard.png" alt="Reporting Dashboard Screenshot">
                 <p>Insightful reporting dashboard visualizing key metrics like sales trends and inventory levels at a glance.</p>
             </div>
             <div class="screenshot-card">
-                <img src="screenshots/inventory.png" alt="Inventory Management Screenshot">
+                <img src="screenshots/inventory_management.png" alt="Inventory Management Screenshot">
                 <p>Robust inventory management module to track stock, prices, and expiry dates with real-time accuracy.</p>
             </div>
             <div class="screenshot-card">
-                <img src="screenshots/supplier.png" alt="Supplier Management Screenshot">
+                <img src="screenshots/supplier_management.png" alt="Supplier Management Screenshot">
                 <p>Streamlined supplier management module for maintaining contact details and order coordination.</p>
             </div>
             <div class="screenshot-card">
-                <img src="screenshots/sales.png" alt="Sales Management Screenshot">
+                <img src="screenshots/sales_management.png" alt="Sales Management Screenshot">
                 <p>Dynamic sales management module to process transactions and monitor revenue with ease.</p>
             </div>
             <div class="screenshot-card">
@@ -358,23 +286,18 @@
 
     <section class="customize">
         <h2>Need Adjustments? We’ve Got You Covered!</h2>
-        <p>Every pharmacy is unique, and we’re here to make MicroClinic Plus fit your specific needs. Whether it’s custom features, additional modules, or tailored workflows, let us know how we can make this solution perfect for you.</p>
-        <a href="#contact" class="cta-button">Request Customization</a>
+        <p>Every pharmacy is unique, and we’re here to make MicroClinic Plus fit your specific needs. Whether it’s custom features, additional modules, or tailored workflows, visit my portfolio to request a solution tailored just for you.</p>
+        <a href="https://wabuko-portfolio.vercel.app/contact" class="cta-button">Request Customization via My Portfolio</a>
     </section>
 
     <section class="contact" id="contact">
         <h2>Let’s Connect</h2>
-        <p>Join the countless pharmacies transforming their operations with MicroClinic Plus. Contact us today to learn more or request a tailored solution!</p>
-        <form action="mailto:basilwabbs@gmail.com" method="post" enctype="text/plain">
-            <input type="text" name="name" placeholder="Wabuko" required>
-            <input type="email" name="email" placeholder="basilwabbs@gmail.com" required>
-            <textarea name="message" rows="6" placeholder="Tell us about your needs or inquiries..." required></textarea>
-            <button type="submit">Send Message</button>
-        </form>
+        <p>Join the countless pharmacies transforming their operations with MicroClinic Plus. Visit my portfolio to learn more, request a tailored solution, or get in touch with me directly!</p>
+        <a href="https://wabuko-portfolio.vercel.app/contact" class="cta-button">Contact Me via My Portfolio</a>
     </section>
 
     <footer>
-        <p>© 2025 MicroClinic Plus Pharmacy Manager. Crafted with Excellence for the Future of Healthcare.</p>
+        <p>WabukoWabuko © 2025 MicroClinic Plus Pharmacy Manager. Crafted with Excellence for the Future of Healthcare.</p>
     </footer>
 </body>
 </html>
