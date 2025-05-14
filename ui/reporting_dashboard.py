@@ -136,6 +136,10 @@ class ReportingDashboardWidget(QWidget):
         main_layout.addStretch()
 
     def generate_report(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         report_type = self.report_combo.currentText()
         if report_type == "Select Report":
             QMessageBox.warning(self, "Error", "Please select a report type.")
@@ -216,6 +220,10 @@ class ReportingDashboardWidget(QWidget):
             self.report_table.setItem(row, 2, QTableWidgetItem(str(drug['quantity'])))
 
     def export_to_pdf(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         if self.report_table.rowCount() == 0:
             QMessageBox.warning(self, "Error", "No report data to export.")
             return
@@ -343,4 +351,4 @@ class ReportingDashboardWidget(QWidget):
                     canvas.drawImage('assets/logo.png', A4[0]-70*mm, 20*mm, width=50*mm, height=50*mm, mask='auto')
 
         pdf.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-        QMessageBox.information(self, "Success", f"Report exported to {file_path}")
+        QMessageBox.information(self, "Success", f"Report exported to {file_path} at 01:01 PM EAT on Wednesday, May 14, 2025.")
