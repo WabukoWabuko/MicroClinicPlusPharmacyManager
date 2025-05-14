@@ -234,6 +234,10 @@ class InventoryManagementWidget(QWidget):
             self.price_input.setText(self.drug_table.item(row, 5).text())
 
     def add_drug(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         name = self.name_input.text().strip()
         quantity = self.quantity_input.text().strip()
         batch_number = self.batch_number_input.text().strip()
@@ -273,11 +277,15 @@ class InventoryManagementWidget(QWidget):
             return
 
         self.db.add_drug(name, quantity_val, batch_number, expiry_date, price_val)
-        QMessageBox.information(self, "Success", "Drug added successfully.")
+        QMessageBox.information(self, "Success", "Drug added successfully at 12:03 PM EAT on Wednesday, May 14, 2025.")
         self.load_drugs()
         self.clear_form()
 
     def update_drug(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         row = self.drug_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Error", "Please select a drug to update.")
@@ -323,11 +331,15 @@ class InventoryManagementWidget(QWidget):
             return
 
         self.db.update_drug(drug_id, name, quantity_val, batch_number, expiry_date, price_val)
-        QMessageBox.information(self, "Success", "Drug updated successfully.")
+        QMessageBox.information(self, "Success", "Drug updated successfully at 12:03 PM EAT on Wednesday, May 14, 2025.")
         self.load_drugs()
         self.clear_form()
 
     def delete_drug(self):
+        if not self.main_window.db.is_system_activated() and not self.main_window.db.is_demo_period_active():
+            QMessageBox.warning(self, "Error", "Demo period expired. Please activate the system.")
+            return
+
         row = self.drug_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Error", "Please select a drug to delete.")
@@ -338,7 +350,7 @@ class InventoryManagementWidget(QWidget):
                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             self.db.delete_drug(drug_id)
-            QMessageBox.information(self, "Success", "Drug deleted successfully.")
+            QMessageBox.information(self, "Success", "Drug deleted successfully at 12:03 PM EAT on Wednesday, May 14, 2025.")
             self.load_drugs()
             self.clear_form()
 
