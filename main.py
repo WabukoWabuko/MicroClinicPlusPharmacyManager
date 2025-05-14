@@ -65,6 +65,11 @@ class MainWindow(QMainWindow):
         self.update_status_dot()
 
     def show_menu(self):
+        # Check demo period and activation status
+        if not self.db.is_system_activated() and not self.db.is_demo_period_active():
+            self.show_login()
+            return
+
         self.clear_content()
         menu_widget = QWidget()
         menu_layout = QVBoxLayout(menu_widget)
