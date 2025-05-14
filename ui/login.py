@@ -32,7 +32,7 @@ class LoginWidget(QWidget):
 
         # Logo
         logo_label = QLabel()
-        pixmap = QPixmap("database/logo.png")  # Replace with your image path
+        pixmap = QPixmap("assets/logo.png")  # Replace with your image path
         if not pixmap.isNull():
             scaled_pixmap = pixmap.scaled(150, 150, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)  # Regulated size
             logo_label.setPixmap(scaled_pixmap)
