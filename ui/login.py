@@ -1,6 +1,8 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QPixmap
+from datetime import datetime, timedelta
+import pytz
 
 class LoginWidget(QWidget):
     def __init__(self, main_window):
@@ -223,6 +225,66 @@ class LoginWidget(QWidget):
 
         main_layout.addStretch()
 
+        # Schedule the demo period warning to appear after a short delay (1 second)
+        QTimer.singleShot(1000, self.show_demo_warning)
+
+    def show_demo_warning(self):
+        """Show a warning about the remaining demo period if applicable."""
+        if not self.main_window.db.is_system_activated() and self.main_window.db.is_demo_period_active():
+            config = self.main_window.db.load_config()
+            first_launch_str = config.get("first_launch_date")
+            if first_launch_str:
+                try:
+                    first_launch = datetime.strptime(first_launch_str, "%Y-%m-%d %H:%M:%S")
+                    first_launch = pytz.timezone('Africa/Nairobi').localize(first_launch)
+                    current_time = datetime.now(pytz.timezone('Africa/Nairobi'))
+                    demo_duration = timedelta(days=7)
+                    demo_end = first_launch + demo_duration
+                    remaining_time = demo_end - current_time
+                    if remaining_time.total_seconds() > 0:  # Only show if demo hasn't expired
+                        days = remaining_time.days
+                        hours = remaining_time.seconds // 3600
+                        msg = QMessageBox(self)
+                        msg.setWindowTitle("Demo Period Warning")
+                        msg.setText(f"Demo period active. {days} days and {hours} hours remaining.")
+                        msg.setIcon(QMessageBox.Icon.Warning)  # Set warning icon
+                        # Customize the style to have a gray background, white text, red warning icon, and styled close button
+                        msg.setStyleSheet("""
+                            QMessageBox {
+                                background-color: #808080;  /* Gray background */
+                                color: #FFFFFF;  /* White text */
+                            }
+                            QLabel {
+                                color: #FFFFFF;  /* White text for the message */
+                            }
+                            QAbstractButton {
+                                background-color: #555555;  /* Dark gray button background */
+                                color: #FFFFFF;  /* White button text */
+                                border: 1px solid #FFFFFF;  /* White border */
+                                border-radius: 5px;
+                                padding: 5px 10px;
+                            }
+                            QAbstractButton:hover {
+                                background-color: #FF0000;  /* Red background on hover */
+                            }
+                            QAbstractButton:pressed {
+                                background-color: #CC0000;  /* Darker red when pressed */
+                            }
+                            .QMessageBox QLabel[objectName="qt_msgbox_label"] {
+                                qproperty-alignment: AlignCenter;  /* Center the text */
+                            }
+                            .QMessageBox QAbstractButton#warning {
+                                background-color: #FF0000;  /* Red warning icon */
+                                border: 1px solid #FF0000;
+                                border-radius: 5px;
+                            }
+                        """)
+                        msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+                        msg.show()
+                        QTimer.singleShot(5000, msg.close)  # Close after 5 seconds if not dismissed manually
+                except ValueError as e:
+                    print(f"Error parsing first_launch_date for demo warning: {e}")
+
     def update_quote(self):
         """Update the quote to the next one in the list, cycling through."""
         self.current_quote_index = (self.current_quote_index + 1) % len(self.quotes)
@@ -238,7 +300,30 @@ class LoginWidget(QWidget):
             msg = QMessageBox(self)
             msg.setWindowTitle("Demo Expired")
             msg.setText("The demo period has expired. Please enter the activation code to continue.")
-            msg.setStandardButtons(QMessageBox.StandardButton.NoButton)  # No buttons
+            msg.setIcon(QMessageBox.Icon.Critical)  # Set critical icon for expiration
+            msg.setStyleSheet("""
+                QMessageBox {
+                    background-color: #F44336;  /* Red background for critical */
+                    color: #FFFFFF;  /* White text */
+                }
+                QLabel {
+                    color: #FFFFFF;  /* White text for the message */
+                }
+                QAbstractButton {
+                    background-color: #555555;  /* Dark gray button background */
+                    color: #FFFFFF;  /* White button text */
+                    border: 1px solid #FFFFFF;  /* White border */
+                    border-radius: 5px;
+                    padding: 5px 10px;
+                }
+                QAbstractButton:hover {
+                    background-color: #FF0000;  /* Red background on hover */
+                }
+                QAbstractButton:pressed {
+                    background-color: #CC0000;  /* Darker red when pressed */
+                }
+            """)
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
             msg.show()
             QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
             return
@@ -246,14 +331,71 @@ class LoginWidget(QWidget):
         username = self.username_input.text().strip()
         password = self.password_input.text()
         if not username or not password:
-            QMessageBox.warning(self, "Input Error", "Username and password cannot be empty.")
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Input Error")
+            msg.setText("Username and password cannot be empty.")
+            msg.setIcon(QMessageBox.Icon.Warning)
+            msg.setStyleSheet("""
+                QMessageBox {
+                    background-color: #FF9800;  /* Orange background for warning */
+                    color: #212121;  /* Dark text */
+                }
+                QLabel {
+                    color: #212121;  /* Dark text for the message */
+                }
+                QAbstractButton {
+                    background-color: #555555;  /* Dark gray button background */
+                    color: #FFFFFF;  /* White button text */
+                    border: 1px solid #FFFFFF;  /* White border */
+                    border-radius: 5px;
+                    padding: 5px 10px;
+                }
+                QAbstractButton:hover {
+                    background-color: #FF0000;  /* Red background on hover */
+                }
+                QAbstractButton:pressed {
+                    background-color: #CC0000;  /* Darker red when pressed */
+                }
+            """)
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.show()
+            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
             return
+
         user = self.main_window.db.authenticate_user(username, password)
         if user:
             self.main_window.current_user = user
             self.main_window.show_menu()
         else:
-            QMessageBox.critical(self, "Login Failed", "Invalid username or password.")
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Login Failed")
+            msg.setText("Invalid username or password.")
+            msg.setIcon(QMessageBox.Icon.Critical)
+            msg.setStyleSheet("""
+                QMessageBox {
+                    background-color: #F44336;  /* Red background for critical */
+                    color: #FFFFFF;  /* White text */
+                }
+                QLabel {
+                    color: #FFFFFF;  /* White text for the message */
+                }
+                QAbstractButton {
+                    background-color: #555555;  /* Dark gray button background */
+                    color: #FFFFFF;  /* White button text */
+                    border: 1px solid #FFFFFF;  /* White border */
+                    border-radius: 5px;
+                    padding: 5px 10px;
+                }
+                QAbstractButton:hover {
+                    background-color: #FF0000;  /* Red background on hover */
+                }
+                QAbstractButton:pressed {
+                    background-color: #CC0000;  /* Darker red when pressed */
+                }
+            """)
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.show()
+            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
             self.clear_fields()
 
     def clear_fields(self):
@@ -265,15 +407,100 @@ class LoginWidget(QWidget):
     def activate_system(self):
         code = self.activation_input.text().strip()
         if not code:
-            QMessageBox.warning(self, "Input Error", "Activation code cannot be empty.")
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Input Error")
+            msg.setText("Activation code cannot be empty.")
+            msg.setIcon(QMessageBox.Icon.Warning)
+            msg.setStyleSheet("""
+                QMessageBox {
+                    background-color: #FF9800;  /* Orange background for warning */
+                    color: #212121;  /* Dark text */
+                }
+                QLabel {
+                    color: #212121;  /* Dark text for the message */
+                }
+                QAbstractButton {
+                    background-color: #555555;  /* Dark gray button background */
+                    color: #FFFFFF;  /* White button text */
+                    border: 1px solid #FFFFFF;  /* White border */
+                    border-radius: 5px;
+                    padding: 5px 10px;
+                }
+                QAbstractButton:hover {
+                    background-color: #FF0000;  /* Red background on hover */
+                }
+                QAbstractButton:pressed {
+                    background-color: #CC0000;  /* Darker red when pressed */
+                }
+            """)
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.show()
+            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
             return
+
         if self.main_window.db.activate_system(code):
-            QMessageBox.information(self, "Success", "System activated successfully! Please log in again.")
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Success")
+            msg.setText("System activated successfully! Please log in again.")
+            msg.setIcon(QMessageBox.Icon.Information)
+            msg.setStyleSheet("""
+                QMessageBox {
+                    background-color: #4CAF50;  /* Green background for success */
+                    color: #FFFFFF;  /* White text */
+                }
+                QLabel {
+                    color: #FFFFFF;  /* White text for the message */
+                }
+                QAbstractButton {
+                    background-color: #555555;  /* Dark gray button background */
+                    color: #FFFFFF;  /* White button text */
+                    border: 1px solid #FFFFFF;  /* White border */
+                    border-radius: 5px;
+                    padding: 5px 10px;
+                }
+                QAbstractButton:hover {
+                    background-color: #FF0000;  /* Red background on hover */
+                }
+                QAbstractButton:pressed {
+                    background-color: #CC0000;  /* Darker red when pressed */
+                }
+            """)
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.show()
+            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
             # Remove activation input and button
             for i in reversed(range(self.activation_layout.count())):
                 self.activation_layout.itemAt(i).widget().setParent(None)
             self.activate_button.setParent(None)
             self.main_window.show_login()
         else:
-            QMessageBox.critical(self, "Activation Failed", "Invalid activation code.")
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Activation Failed")
+            msg.setText("Invalid activation code.")
+            msg.setIcon(QMessageBox.Icon.Critical)
+            msg.setStyleSheet("""
+                QMessageBox {
+                    background-color: #F44336;  /* Red background for critical */
+                    color: #FFFFFF;  /* White text */
+                }
+                QLabel {
+                    color: #FFFFFF;  /* White text for the message */
+                }
+                QAbstractButton {
+                    background-color: #555555;  /* Dark gray button background */
+                    color: #FFFFFF;  /* White button text */
+                    border: 1px solid #FFFFFF;  /* White border */
+                    border-radius: 5px;
+                    padding: 5px 10px;
+                }
+                QAbstractButton:hover {
+                    background-color: #FF0000;  /* Red background on hover */
+                }
+                QAbstractButton:pressed {
+                    background-color: #CC0000;  /* Darker red when pressed */
+                }
+            """)
+            msg.setStandardButtons(QMessageBox.StandardButton.Close)  # Add a Close button
+            msg.show()
+            QTimer.singleShot(5000, msg.close)  # Close after 5 seconds
             self.clear_fields()
